@@ -1,10 +1,10 @@
-package org.ssafy.eeum.security.oauth2;
+package org.ssafy.eeum.global.auth.oauth2;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.ssafy.eeum.domain.user.User;
+import org.ssafy.eeum.domain.user.entity.User;
 
 import java.util.Collection;
 import java.util.Collections;

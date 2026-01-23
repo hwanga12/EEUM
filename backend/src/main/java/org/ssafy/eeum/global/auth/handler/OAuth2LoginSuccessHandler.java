@@ -1,4 +1,4 @@
-package org.ssafy.eeum.global.config.security.handler;
+package org.ssafy.eeum.global.auth.handler;
 
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -8,8 +8,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-import org.ssafy.eeum.global.config.security.provider.JwtTokenProvider;
-import org.ssafy.eeum.security.oauth2.CustomOAuth2User;
+import org.ssafy.eeum.global.auth.jwt.JwtTokenProvider;
+import org.ssafy.eeum.global.auth.oauth2.CustomOAuth2User;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -65,7 +65,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
-        // 6. 프론트엔드로 리다이렉트 (URL에서 토큰 삭제!)
+        // 6. 프론트엔드로 리다이렉트
         String targetUrl = "http://localhost:5173/api/auth/login/social";
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }

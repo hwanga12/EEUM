@@ -1,4 +1,4 @@
-package org.ssafy.eeum.global.config.security.provider;
+package org.ssafy.eeum.global.auth.jwt;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;

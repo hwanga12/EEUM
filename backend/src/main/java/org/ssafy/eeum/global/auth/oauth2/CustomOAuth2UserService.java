@@ -1,4 +1,4 @@
-package org.ssafy.eeum.security.oauth2;
+package org.ssafy.eeum.global.auth.oauth2;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,10 +8,12 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.ssafy.eeum.domain.user.User;
-import org.ssafy.eeum.repository.SocialAccountRepository;
-import org.ssafy.eeum.repository.UserRepository;
-import org.ssafy.eeum.domain.user.SocialAccount;
+import org.ssafy.eeum.domain.user.entity.User;
+import org.ssafy.eeum.domain.user.repository.SocialAccountRepository;
+import org.ssafy.eeum.domain.user.repository.UserRepository;
+import org.ssafy.eeum.domain.user.entity.SocialAccount;
+import org.ssafy.eeum.global.auth.oauth2.CustomOAuth2User;
+
 import java.time.LocalDateTime;
 import java.util.Map;
 

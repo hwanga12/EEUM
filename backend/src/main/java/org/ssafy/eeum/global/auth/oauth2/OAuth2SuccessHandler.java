@@ -1,4 +1,4 @@
-package org.ssafy.eeum.security.oauth2;
+package org.ssafy.eeum.global.auth.oauth2;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.ssafy.eeum.global.auth.oauth2.CustomOAuth2User;
 
 import java.io.IOException;
 

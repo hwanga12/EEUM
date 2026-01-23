@@ -13,8 +13,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.ssafy.eeum.global.config.security.handler.OAuth2LoginSuccessHandler;
-import org.ssafy.eeum.security.oauth2.CustomOAuth2UserService;
+import org.ssafy.eeum.global.auth.handler.OAuth2LoginSuccessHandler;
+import org.ssafy.eeum.global.auth.oauth2.CustomOAuth2UserService;
 
 
 import java.util.List;

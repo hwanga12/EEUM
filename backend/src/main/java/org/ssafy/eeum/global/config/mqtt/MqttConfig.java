@@ -11,6 +11,7 @@ import org.springframework.integration.mqtt.outbound.Mqttv5PahoMessageHandler;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 
+import org.springframework.integration.mqtt.support.DefaultPahoMessageConverter;
 import java.nio.charset.StandardCharsets;
 
 @Configuration
@@ -35,7 +36,7 @@ public class MqttConfig {
     public MqttConnectionOptions mqttConnectionOptions() {
         MqttConnectionOptions options = new MqttConnectionOptions();
 
-        options.setServerURIs(new String[]{url});
+        options.setServerURIs(new String[] { url });
         options.setUserName(username);
         options.setPassword(password.getBytes(StandardCharsets.UTF_8));
 
@@ -44,6 +45,22 @@ public class MqttConfig {
         options.setAutomaticReconnect(true);
 
         return options;
+    }
+
+    @Bean
+    public MessageChannel mqttInputChannel() {
+        return new DirectChannel();
+    }
+
+    @Bean
+    public Mqttv5PahoMessageDrivenChannelAdapter inbound() {
+        Mqttv5PahoMessageDrivenChannelAdapter adapter = new Mqttv5PahoMessageDrivenChannelAdapter(url, clientId + "-in",
+                "eeum/sensor/data", "eeum/ai/sentiment", "eeum/family/code");
+        adapter.setCompletionTimeout(5000);
+        adapter.setConverter(new DefaultPahoMessageConverter());
+        adapter.setQos(1);
+        adapter.setOutputChannel(mqttInputChannel());
+        return adapter;
     }
 
     @Bean

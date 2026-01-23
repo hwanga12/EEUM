@@ -20,6 +20,7 @@ public class MqttService {
             Message<String> message = MessageBuilder
                     .withPayload(payload)
                     .setHeader(MqttHeaders.TOPIC, topic)
+                    .setHeader(MqttHeaders.QOS, 1)
                     .build();
 
             mqttOutboundChannel.send(message);
@@ -27,5 +28,11 @@ public class MqttService {
         } catch (Exception e) {
             log.error("MQTT Publish Failed - Topic: {}, Error: {}", topic, e.getMessage());
         }
+    }
+
+    public void sendToIot(Integer groupId, String category, String jsonPayload) {
+        // 사용 형식 : eeum/group/{groupId}/{category}
+        String topic = String.format("eeum/group/%d/%s", groupId, category);
+        publish(topic, jsonPayload);
     }
 }

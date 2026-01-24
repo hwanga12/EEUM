@@ -53,8 +53,7 @@ public class SecurityConfig {
                                                 .defaultAuthenticationEntryPointFor(
                                                                 new org.springframework.security.web.authentication.HttpStatusEntryPoint(
                                                                                 org.springframework.http.HttpStatus.UNAUTHORIZED),
-                                                                new org.springframework.security.web.util.matcher.AntPathRequestMatcher(
-                                                                                "/api/**")))
+                                                                request -> request.getRequestURI().startsWith("/api/")))
                                 .addFilterBefore(new JwtAuthenticationFilter(jwtProvider),
                                                 UsernamePasswordAuthenticationFilter.class)
                                 .oauth2Login(oauth2 -> oauth2

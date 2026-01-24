@@ -1,5 +1,6 @@
 <script setup>
 import HelloWorld from './components/HelloWorld.vue'
+import HealthDashboard from './components/HealthDashboard.vue' // 삼성헬스데이터 조회 스니펫
 </script>
 
 <template>
@@ -12,6 +13,8 @@ import HelloWorld from './components/HelloWorld.vue'
     </a>
   </div>
   <HelloWorld msg="Vite + Vue" />
+   <!-- 삼성 헬스 조회 스니펫 -->
+  <HealthDashboard />
 </template>
 
 <style scoped>

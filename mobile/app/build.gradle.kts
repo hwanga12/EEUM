@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    id("kotlin-parcelize") // sh sdk
 }
 
 android {
@@ -11,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.eeum"
-        minSdk = 26
+        minSdk = 29 // 삼성헬스 요구사항
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -38,6 +39,11 @@ android {
 }
 
 dependencies {
+    // libs 폴더에 있는 aar 파일을 명시적으로 포함
+    // 실제 파일명인 'samsung-health-data-api-1.0.0.aar'로 정확히 수정합니다.
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("samsung-health-data-api-1.0.0.aar"))))
+    // SDK 내부에서 사용하는 Gson 필수 [cite: 4, 9]
+    implementation("com.google.code.gson:gson:2.9.0")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -84,3 +90,4 @@ tasks.register<Copy>("copyVueAssets") {
 tasks.named("preBuild") {
     dependsOn("copyVueAssets")
 }
+

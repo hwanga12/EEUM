@@ -1,5 +1,10 @@
 package com.example.eeum
 
+// 최상단 import 문에 추가되어야 함
+import android.webkit.JavascriptInterface
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+
 import android.os.Bundle
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -11,20 +16,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.eeum.ui.theme.EeumTheme
 
+
 class MainActivity : ComponentActivity() {
+    private lateinit var healthManager: SamsungHealthManager // 브릿지 주입
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        healthManager = SamsungHealthManager(this) // 매니저 초기화
 
         setContent {
             EeumTheme {
-                WebViewScreen()
+                WebViewScreen(this, healthManager) // 연결
             }
         }
     }
 }
 
 @Composable
-fun WebViewScreen() {
+fun WebViewScreen(activity: ComponentActivity, healthManager: SamsungHealthManager) {
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { context ->
@@ -32,14 +40,16 @@ fun WebViewScreen() {
                 // 🔥 WebView 설정 강화 (여기가 핵심!)
                 settings.apply {
                     javaScriptEnabled = true
-                    domStorageEnabled = true   // 로컬 스토리지 사용 (Vue 필수)
-
+                    domStorageEnabled = true
+                    allowFileAccess = true
                     // 👇 이 설정들이 있어야 'file://' 경로에서 모듈을 불러올 수 있음
                     allowFileAccess = true
                     allowContentAccess = true
                     allowFileAccessFromFileURLs = true
                     allowUniversalAccessFromFileURLs = true
                 }
+                // Android 이름으로 브릿지 등록
+                addJavascriptInterface(WebAppInterface(activity, this, healthManager), "Android")
 
                 webViewClient = WebViewClient()
 

@@ -41,6 +41,7 @@ public class VoiceService {
 
     @Value("${spring.ai-server.url}")
     private String AI_SERVER_URL;
+
     @Value("${spring.ai-server.key}")
     private String AI_SERVER_KEY;
 
@@ -72,26 +73,33 @@ public class VoiceService {
                 .build();
         sampleRepository.save(sample);
 
-        try {
-            String convertUrl = AI_SERVER_URL + "/api/v1/voice/convert";
+        String originalPath = request.getSamplePath();
+        if (!originalPath.toLowerCase().endsWith(".wav")) {
+            log.info("WAV 형식이 아님을 감지: {}. AI 서버에 변환을 요청합니다.", originalPath);
 
-            Map<String, String> requestBody = new HashMap<>();
-            requestBody.put("s3_url", request.getSamplePath());
-            requestBody.put("bucket_name", bucketName);
+            try {
+                String convertUrl = AI_SERVER_URL + "/api/v1/voice/convert";
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("X-API-Key", AI_SERVER_KEY);
+                Map<String, String> requestBody = new HashMap<>();
+                requestBody.put("s3_url", request.getSamplePath());
+                requestBody.put("bucket_name", bucketName);
 
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.set("X-API-Key", AI_SERVER_KEY);
 
-            Map<String, Object> response = restTemplate.postForObject(convertUrl, entity, Map.class);
+                HttpEntity<Map<String, String>> entity = new HttpEntity<>(requestBody, headers);
 
-            if (response != null && "success".equals(response.get("status"))) {
-                log.info("AI 변환 성공: {}", response.get("s3_key"));
+                Map<String, Object> response = restTemplate.postForObject(convertUrl, entity, Map.class);
+
+                if (response != null && "success".equals(response.get("status"))) {
+                    String convertedS3Key = (String) response.get("s3_key");
+                    log.info("AI 변환 성공: {}", convertedS3Key);
+                    sample.updateSamplePath(convertedS3Key);
+                }
+            } catch (Exception e) {
+                log.error("AI 변환 호출 실패: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            log.error("AI 변환 호출 실패: {}", e.getMessage());
         }
     }
 
@@ -107,7 +115,6 @@ public class VoiceService {
         try {
             String ttsUrl = AI_SERVER_URL + "/api/v1/voice/tts";
 
-            // Python 서버의 TtsRequest 규격에 맞춤
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("text", request.getText());
             requestBody.put("sample_s3_url", representativeSample.getSamplePath());
@@ -120,7 +127,6 @@ public class VoiceService {
             headers.set("X-API-Key", AI_SERVER_KEY);
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-
             Map<String, Object> response = restTemplate.postForObject(ttsUrl, entity, Map.class);
 
             if (response != null && "success".equals(response.get("status"))) {

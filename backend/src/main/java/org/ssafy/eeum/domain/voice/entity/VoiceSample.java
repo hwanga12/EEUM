@@ -29,4 +29,8 @@ public class VoiceSample extends BaseEntity {
 
     @Column(name = "duration_sec", nullable = false)
     private Double durationSec;
+
+    public void updateSamplePath(String newPath) {
+        this.samplePath = newPath;
+    }
 }

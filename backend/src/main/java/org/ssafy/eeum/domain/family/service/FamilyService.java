@@ -1,0 +1,224 @@
+package org.ssafy.eeum.domain.family.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.ssafy.eeum.domain.family.dto.CreateFamilyRequestDto;
+import org.ssafy.eeum.domain.family.dto.CreateFamilyResponseDto;
+import org.ssafy.eeum.domain.family.entity.Family;
+import org.ssafy.eeum.domain.family.entity.Supporter;
+import org.ssafy.eeum.domain.family.repository.FamilyRepository;
+import org.ssafy.eeum.domain.family.repository.SupporterRepository;
+import org.ssafy.eeum.domain.user.entity.User;
+import org.ssafy.eeum.domain.user.repository.UserRepository;
+
+import org.ssafy.eeum.domain.family.dto.FamilySimpleResponseDto;
+import org.ssafy.eeum.domain.family.dto.LeaveFamilyResponseDto;
+
+
+import org.ssafy.eeum.domain.family.dto.FamilyMemberDto;
+import org.ssafy.eeum.domain.family.dto.FamilyMemberPriorityDto;
+import org.ssafy.eeum.domain.family.dto.UpdateFamilyRequestDto;
+import org.ssafy.eeum.domain.family.dto.UpdateFamilyResponseDto;
+import org.ssafy.eeum.global.error.exception.CustomException;
+import org.ssafy.eeum.global.error.model.ErrorCode;
+
+import java.security.SecureRandom;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class FamilyService {
+
+    private final FamilyRepository familyRepository;
+    private final UserRepository userRepository;
+    private final SupporterRepository supporterRepository;
+    private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    private static final int CODE_LENGTH = 8;
+    private static final SecureRandom RANDOM = new SecureRandom();
+
+    @Transactional
+    public CreateFamilyResponseDto createFamily(String userId, CreateFamilyRequestDto createFamilyRequestDto) {
+        User user = userRepository.findById(Integer.parseInt(userId))
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        // 2. 초대 코드 생성 (중복 확인)
+        String inviteCode;
+        do {
+            inviteCode = generateInviteCode();
+        } while (familyRepository.findByInviteCode(inviteCode).isPresent());
+
+        // 3. 가족 생성 및 저장
+        Family family = Family.builder()
+                .groupName(createFamilyRequestDto.getName())
+                .inviteCode(inviteCode)
+                .user(user) // 가족을 생성한 유저 설정
+                .build();
+        Family savedFamily = familyRepository.save(family);
+
+        // 4. 가족-유저 연결 (Supporter 생성, 생성자는 CAREGIVER 및 대표자로 설정)
+        Supporter supporter = Supporter.builder()
+                .user(user)
+                .family(savedFamily)
+                .role(Supporter.Role.CAREGIVER)
+                .representativeFlag(true)
+                .relationship(createFamilyRequestDto.getRelationship())
+                .build();
+        supporterRepository.save(supporter);
+
+        // 5. 응답 DTO 반환
+        return CreateFamilyResponseDto.of(savedFamily);
+    }
+
+
+    public List<FamilySimpleResponseDto> findMyFamilies(String userId) {
+        User user = userRepository.findById(Integer.parseInt(userId))
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        List<Supporter> supporters = supporterRepository.findAllByUser(user);
+
+        return supporters.stream()
+                .map(supporter -> FamilySimpleResponseDto.of(supporter.getFamily()))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<FamilyMemberDto> getFamilyMembers(Long familyId) {
+        Family family = familyRepository.findById(familyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FAMILY_NOT_FOUND));
+
+        List<Supporter> supporters = supporterRepository.findAllByFamily(family);
+
+        return supporters.stream()
+                .map(supporter -> FamilyMemberDto.builder()
+                        .userId(supporter.getUser().getId().longValue())
+                        .name(supporter.getUser().getName())
+                        .profileImage(supporter.getUser().getProfileImage())
+                        .isDependent(supporter.getRole() == Supporter.Role.PATIENT)
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private String generateInviteCode() {
+        StringBuilder code = new StringBuilder(CODE_LENGTH);
+        for (int i = 0; i < CODE_LENGTH; i++) {
+            code.append(CHARACTERS.charAt(RANDOM.nextInt(CHARACTERS.length())));
+        }
+        return code.toString();
+    }
+
+    @Transactional
+    public LeaveFamilyResponseDto leaveFamily(String userId, Long familyId) {
+        User user = userRepository.findById(Integer.parseInt(userId))
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        Family family = familyRepository.findById(familyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FAMILY_NOT_FOUND));
+        // 유저가 가족의 대표자인지 확인
+        if (family.getUser().getId().equals(user.getId())) {
+            // 대표자일 경우, 전체 가족 삭제
+            familyRepository.delete(family);
+        } else {
+            // 대표자가 아닐 경우, 해당 유저의 서포터 기록 삭제
+            Supporter supporter = supporterRepository.findByUserAndFamily(user, family)
+                    .orElseThrow(() -> new CustomException(ErrorCode.SUPPORTER_NOT_FOUND));
+            supporterRepository.delete(supporter);
+        }
+
+        List<FamilySimpleResponseDto> remainingFamilies = findMyFamilies(userId);
+        if (!remainingFamilies.isEmpty()) {
+            return LeaveFamilyResponseDto.builder()
+                    .nextFamilyId(remainingFamilies.get(0).getId())
+                    .nextFamilyName(remainingFamilies.get(0).getName())
+                    .message("가족 그룹에서 탈퇴/삭제되었습니다. 남아있는 다른 가족 그룹입니다.")
+                    .build();
+        } else {
+            return LeaveFamilyResponseDto.builder()
+                    .message("모든 가족 그룹에서 탈퇴/삭제되었습니다. 더 이상 가입된 가족 그룹이 없습니다.")
+                    .build();
+        }
+    }
+
+    @Transactional
+    public UpdateFamilyResponseDto updateFamily(String authenticatedUserId, Long familyId, UpdateFamilyRequestDto requestDto) {
+        User authenticatedUser = userRepository.findById(Integer.parseInt(authenticatedUserId))
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        Family family = familyRepository.findById(familyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FAMILY_NOT_FOUND));
+
+        // 인증된 유저가 가족의 대표자인지 확인
+        if (!family.getUser().getId().equals(authenticatedUser.getId())) {
+            throw new CustomException(ErrorCode.NOT_FAMILY_REPRESENTATIVE);
+        }
+
+        // 1. 그룹 이름 수정
+        if (requestDto.getNewGroupName() != null && !requestDto.getNewGroupName().trim().isEmpty()) {
+            family.updateGroupName(requestDto.getNewGroupName()); // Assuming updateGroupName method in Family
+            familyRepository.save(family);
+        }
+
+        // 2. 피부양자 설정
+        // 3. 피부양자 건강 상태 정보 설정
+        if (requestDto.getDependentUserId() != null) {
+            User dependentUser = userRepository.findById(requestDto.getDependentUserId().intValue())
+                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+            // 기존 피부양자 Supporter 찾기
+            Optional<Supporter> existingPatientSupporter = supporterRepository.findByFamilyAndRole(family, Supporter.Role.PATIENT);
+
+            // 기존 피부양자 삭제 로직
+            if (existingPatientSupporter.isPresent()) {
+                Supporter currentPatient = existingPatientSupporter.get();
+                // 기존 피부양자가 새로운 피부양자와 다른 경우 또는 피부양자를 0으로 설정하여 삭제 요청한 경우
+                if (!currentPatient.getUser().getId().equals(dependentUser.getId()) || requestDto.getDependentUserId() == 0) {
+                    supporterRepository.delete(currentPatient);
+                }
+            }
+
+            // 새로운 피부양자 설정 (0이 아닌 경우)
+            if (requestDto.getDependentUserId() != 0) {
+                Supporter newPatientSupporter = Supporter.builder()
+                        .user(dependentUser)
+                        .family(family)
+                        .role(Supporter.Role.PATIENT)
+                        .representativeFlag(false) // 피부양자는 대표자가 아님
+                        .relationship(null) // 피부양자의 관계는 여기서 설정하지 않음 (대표자와의 관계는 createFamily에서)
+                        .build();
+                supporterRepository.save(newPatientSupporter);
+
+                // 피부양자 건강 정보 업데이트
+                dependentUser.updateHealthInfo(requestDto.getDependentBloodType(), requestDto.getDependentChronicDiseases());
+                userRepository.save(dependentUser);
+            }
+        } else if (requestDto.getDependentUserId() != null && requestDto.getDependentUserId() == 0) {
+            // 피부양자 제거 요청
+            Optional<Supporter> existingPatientSupporter = supporterRepository.findByFamilyAndRole(family, Supporter.Role.PATIENT);
+            existingPatientSupporter.ifPresent(supporterRepository::delete);
+        }
+
+        // 4. 멤버별 응급 우선순위 설정
+        if (requestDto.getMemberPriorities() != null && !requestDto.getMemberPriorities().isEmpty()) {
+            for (FamilyMemberPriorityDto priorityDto : requestDto.getMemberPriorities()) {
+                User memberUser = userRepository.findById(priorityDto.getUserId().intValue())
+                        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+                Supporter memberSupporter = supporterRepository.findByUserAndFamily(memberUser, family)
+                        .orElseThrow(() -> new CustomException(ErrorCode.SUPPORTER_NOT_FOUND));
+
+                // 우선순위 유효성 검사
+                if (priorityDto.getEmergencyPriority() < 1 || priorityDto.getEmergencyPriority() > 4) {
+                    throw new CustomException(ErrorCode.INVALID_EMERGENCY_PRIORITY);
+                }
+
+                memberSupporter.updateEmergencyPriority(priorityDto.getEmergencyPriority());
+                supporterRepository.save(memberSupporter);
+            }
+        }
+        return UpdateFamilyResponseDto.builder()
+                .familyId(family.getId())
+                .familyName(family.getGroupName())
+                .build();
+    }
+}

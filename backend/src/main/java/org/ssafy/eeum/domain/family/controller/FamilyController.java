@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.ssafy.eeum.domain.family.dto.CreateFamilyRequestDto;
 import org.ssafy.eeum.domain.family.dto.CreateFamilyResponseDto;
 import org.ssafy.eeum.domain.family.dto.FamilyMemberDto;
+import org.ssafy.eeum.domain.family.dto.FamilyMemberDetailResponseDto;
 import org.ssafy.eeum.domain.family.dto.FamilySimpleResponseDto;
 import org.ssafy.eeum.domain.family.dto.LeaveFamilyResponseDto;
 import org.ssafy.eeum.domain.family.dto.UpdateFamilyRequestDto;
@@ -56,6 +57,14 @@ public class FamilyController {
         return ResponseEntity.ok(responseDto);
     }
 
+    @GetMapping("/{familyId}/members/{memberUserId}")
+    public ResponseEntity<FamilyMemberDetailResponseDto> getFamilyMemberDetails(
+            @PathVariable Long familyId,
+            @PathVariable Long memberUserId) {
+        FamilyMemberDetailResponseDto responseDto = familyService.getFamilyMemberDetails(familyId, memberUserId);
+        return ResponseEntity.ok(responseDto);
+    }
+
     @DeleteMapping("/{familyId}/leave")
     public ResponseEntity<LeaveFamilyResponseDto> leaveFamily(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -73,5 +82,15 @@ public class FamilyController {
         String userId = userDetails.getUsername();
         UpdateFamilyResponseDto responseDto = familyService.updateFamily(userId, familyId, requestDto);
         return ResponseEntity.ok(responseDto);
+    }
+
+    @DeleteMapping("/{familyId}/members/{memberUserId}")
+    public ResponseEntity<Void> deleteFamilyMember(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long familyId,
+            @PathVariable Long memberUserId) {
+        String authenticatedUserId = userDetails.getUsername();
+        familyService.deleteFamilyMember(authenticatedUserId, familyId, memberUserId);
+        return ResponseEntity.noContent().build();
     }
 }

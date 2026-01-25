@@ -17,6 +17,7 @@ import org.ssafy.eeum.domain.family.dto.LeaveFamilyResponseDto;
 
 
 import org.ssafy.eeum.domain.family.dto.FamilyMemberDto;
+import org.ssafy.eeum.domain.family.dto.FamilyMemberDetailResponseDto;
 import org.ssafy.eeum.domain.family.dto.FamilyMemberPriorityDto;
 import org.ssafy.eeum.domain.family.dto.UpdateFamilyRequestDto;
 import org.ssafy.eeum.domain.family.dto.UpdateFamilyResponseDto;
@@ -100,6 +101,18 @@ public class FamilyService {
                         .isDependent(supporter.getRole() == Supporter.Role.PATIENT)
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public FamilyMemberDetailResponseDto getFamilyMemberDetails(Long familyId, Long memberUserId) {
+        Family family = familyRepository.findById(familyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FAMILY_NOT_FOUND));
+        User memberUser = userRepository.findById(memberUserId.intValue())
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        Supporter supporter = supporterRepository.findByUserAndFamily(memberUser, family)
+                .orElseThrow(() -> new CustomException(ErrorCode.SUPPORTER_NOT_FOUND));
+
+        return FamilyMemberDetailResponseDto.of(memberUser, supporter);
     }
 
     private String generateInviteCode() {
@@ -220,5 +233,31 @@ public class FamilyService {
                 .familyId(family.getId())
                 .familyName(family.getGroupName())
                 .build();
+    }
+
+    @Transactional
+    public void deleteFamilyMember(String authenticatedUserId, Long familyId, Long memberUserId) {
+        User authenticatedUser = userRepository.findById(Integer.parseInt(authenticatedUserId))
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        Family family = familyRepository.findById(familyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FAMILY_NOT_FOUND));
+
+        // 인증된 유저가 가족의 대표자인지 확인
+        if (!family.getUser().getId().equals(authenticatedUser.getId())) {
+            throw new CustomException(ErrorCode.NOT_FAMILY_REPRESENTATIVE);
+        }
+
+        User memberUserToDelete = userRepository.findById(memberUserId.intValue())
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        // 대표자가 자기 자신을 삭제하는 경우 (탈퇴 API 사용 유도)
+        if (authenticatedUser.getId().equals(memberUserToDelete.getId())) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE, "자기 자신을 삭제하려면 가족 탈퇴 API를 사용해주세요.");
+        }
+
+        Supporter supporterToDelete = supporterRepository.findByUserAndFamily(memberUserToDelete, family)
+                .orElseThrow(() -> new CustomException(ErrorCode.SUPPORTER_NOT_FOUND));
+
+        supporterRepository.delete(supporterToDelete);
     }
 }

@@ -67,8 +67,8 @@ public class Schedule extends BaseEntity {
     private LocalDate recurrenceEndAt;
 
     public void update(String title, LocalDate startAt, LocalDate endAt, LocalDate recurrenceEndAt,
-                       String description, String visitorName, String visitPurpose,
-                       RepeatType repeatType, Boolean isLunar, String targetPerson) {
+            String description, String visitorName, String visitPurpose,
+            RepeatType repeatType, Boolean isLunar, String targetPerson) {
         this.title = title;
         this.startAt = startAt;
         this.endAt = endAt;
@@ -81,7 +81,8 @@ public class Schedule extends BaseEntity {
         this.targetPerson = targetPerson;
     }
 
-    public void updateBasicInfo(String title, LocalDate startAt, LocalDate endAt, String description, String targetPerson) {
+    public void updateBasicInfo(String title, LocalDate startAt, LocalDate endAt, String description,
+            String targetPerson) {
         this.title = title;
         this.startAt = startAt;
         this.endAt = endAt;
@@ -94,7 +95,7 @@ public class Schedule extends BaseEntity {
         this.visitPurpose = visitPurpose;
     }
 
-    public void toggleVisited(Boolean isVisited) {
+    public void updateVisitStatus(Boolean isVisited) {
         this.isVisited = isVisited;
     }
 }

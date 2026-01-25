@@ -30,9 +30,11 @@ public class ScheduleController {
             @RequestParam int month,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String targetPerson) {
+            @RequestParam(required = false) String targetPerson,
+            @RequestParam(required = false) Boolean isVisited) {
         return RestApiResponse
-                .success(scheduleService.getMonthlySchedules(familyId, year, month, category, keyword, targetPerson));
+                .success(scheduleService.getMonthlySchedules(familyId, year, month, category, keyword, targetPerson,
+                        isVisited));
     }
 
     @SwaggerApiSpec(summary = "일정 상세 조회", description = "일정 상세 정보를 조회합니다.")
@@ -71,5 +73,15 @@ public class ScheduleController {
             @RequestParam(value = "delete_all", required = false, defaultValue = "false") boolean deleteAll) {
         scheduleService.deleteSchedule(familyId, scheduleId, deleteAll);
         return RestApiResponse.success("일정이 삭제되었습니다.");
+    }
+
+    @SwaggerApiSpec(summary = "방문 상태 변경", description = "일정의 방문 완료 여부를 변경합니다.")
+    @PatchMapping("/{scheduleId}/visit")
+    public RestApiResponse<Void> updateVisitStatus(
+            @PathVariable Integer familyId,
+            @PathVariable String scheduleId,
+            @RequestParam boolean visited) {
+        scheduleService.updateVisitStatus(familyId, scheduleId, visited);
+        return RestApiResponse.success("방문 상태가 변경되었습니다.");
     }
 }

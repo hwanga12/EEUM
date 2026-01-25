@@ -1,5 +1,6 @@
 package org.ssafy.eeum.domain.family.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,7 @@ public class FamilyController {
 
     private final FamilyService familyService;
 
+    @Operation(summary = "가족 그룹 생성", description = "새로운 가족 그룹을 생성합니다.")
     @PostMapping
     public ResponseEntity<CreateFamilyResponseDto> createFamily(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -42,6 +44,7 @@ public class FamilyController {
         return ResponseEntity.ok(responseDto);
     }
 
+    @Operation(summary = "가족 목록 조회", description = "현재 유저가 속한 모든 가족 그룹의 목록을 조회합니다.")
     @GetMapping
     public ResponseEntity<List<FamilySimpleResponseDto>> getMyFamilies(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -50,6 +53,7 @@ public class FamilyController {
         return ResponseEntity.ok(responseDto);
     }
 
+    @Operation(summary = "가족 그룹 멤버 목록 조회", description = "특정 가족 그룹에 속한 모든 멤버의 목록을 조회합니다.")
     @GetMapping("/{familyId}/members")
     public ResponseEntity<List<FamilyMemberDto>> getFamilyMembers(
             @PathVariable Long familyId) {
@@ -57,6 +61,7 @@ public class FamilyController {
         return ResponseEntity.ok(responseDto);
     }
 
+    @Operation(summary = "가족 그룹 멤버 상세 조회", description = "특정 가족 그룹 멤버의 상세 정보를 조회합니다.")
     @GetMapping("/{familyId}/members/{memberUserId}")
     public ResponseEntity<FamilyMemberDetailResponseDto> getFamilyMemberDetails(
             @PathVariable Long familyId,
@@ -65,6 +70,7 @@ public class FamilyController {
         return ResponseEntity.ok(responseDto);
     }
 
+    @Operation(summary = "가족 그룹 탈퇴/삭제", description = "가족 그룹에서 탈퇴하거나, 대표자일 경우 그룹을 삭제합니다.")
     @DeleteMapping("/{familyId}/leave")
     public ResponseEntity<LeaveFamilyResponseDto> leaveFamily(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -74,6 +80,7 @@ public class FamilyController {
         return ResponseEntity.ok(responseDto);
     }
 
+    @Operation(summary = "가족 그룹 설정 수정", description = "가족 그룹의 이름, 피부양자 설정, 피부양자 건강 정보, 멤버 응급 우선순위를 수정합니다.")
     @PutMapping("/{familyId}")
     public ResponseEntity<UpdateFamilyResponseDto> updateFamily(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -84,6 +91,7 @@ public class FamilyController {
         return ResponseEntity.ok(responseDto);
     }
 
+    @Operation(summary = "가족 그룹 멤버 삭제", description = "가족 대표자가 다른 멤버를 그룹에서 삭제합니다.")
     @DeleteMapping("/{familyId}/members/{memberUserId}")
     public ResponseEntity<Void> deleteFamilyMember(
             @AuthenticationPrincipal CustomUserDetails userDetails,

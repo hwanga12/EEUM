@@ -10,13 +10,17 @@ import java.time.LocalDate;
 @Getter
 @Builder
 public class ScheduleResponseDTO {
-    private Integer scheduleId;
+    private String scheduleId; // 가상 ID
     private String title;
-    private CategoryType categoryType;
     private LocalDate startAt;
     private LocalDate endAt;
+    private CategoryType categoryType;
+    private String description;
     private String visitorName;
     private String visitPurpose;
-    private String targetPerson;
+    private Boolean isVisited;
     private RepeatType repeatType;
+    private Boolean isLunar;
+    private Boolean isModified;
+    private String targetPerson;
 }

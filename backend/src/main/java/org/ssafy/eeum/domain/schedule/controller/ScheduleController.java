@@ -22,39 +22,41 @@ import java.util.List;
 public class ScheduleController {
     private final ScheduleService scheduleService;
 
-    @SwaggerApiSpec(summary = "일정 전체 조회", description = "기간별 가족 일정을 조회합니다.")
+    @SwaggerApiSpec(summary = "월간 일정 조회", description = "특정 연도/월의 모든 가족 일정을 조회합니다.")
     @GetMapping
-    public RestApiResponse<List<ScheduleResponseDTO>> getSchedules(
+    public RestApiResponse<List<ScheduleResponseDTO>> getMonthlySchedules(
             @PathVariable Integer familyId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return RestApiResponse.success(scheduleService.getSchedules(familyId, startDate, endDate));
+            @RequestParam int year,
+            @RequestParam int month) {
+        return RestApiResponse.success(scheduleService.getMonthlySchedules(familyId, year, month));
     }
 
-    @SwaggerApiSpec(summary = "방문 일정 등록", description = "가족 방문 일정을 등록합니다.")
-    @PostMapping("/visit")
-    public RestApiResponse<Void> createVisit(
+    @SwaggerApiSpec(summary = "일정 등록", description = "새로운 가족 일정을 등록합니다.")
+    @PostMapping
+    public RestApiResponse<Void> createSchedule(
             @PathVariable Integer familyId,
-            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @AuthenticationPrincipal CustomUserDetails userDetails, //
             @RequestBody ScheduleRequestDTO request) {
-        scheduleService.saveSchedule(familyId, userDetails.getUser(), request);
-        return RestApiResponse.success("방문 일정 등록 완료");
+        scheduleService.createSchedule(familyId, userDetails.getUser(), request);
+        return RestApiResponse.success("일정이 성공적으로 등록되었습니다.");
     }
 
-    @SwaggerApiSpec(summary = "경조사 일정 등록", description = "생신, 제사 등 경조사 일정을 등록합니다.")
-    @PostMapping("/anniversaries")
-    public RestApiResponse<Void> createAnniversary(
+    @SwaggerApiSpec(summary = "일정 수정", description = "일정을 수정합니다. 가상 ID를 통해 개별 반복 일정만 수정할 수 있습니다.")
+    @PutMapping("/{scheduleId}")
+    public RestApiResponse<Void> updateSchedule(
             @PathVariable Integer familyId,
-            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable String scheduleId,
             @RequestBody ScheduleRequestDTO request) {
-        scheduleService.saveSchedule(familyId, userDetails.getUser(), request);
-        return RestApiResponse.success("경조사 일정 등록 완료");
+        scheduleService.updateSchedule(familyId, scheduleId, request);
+        return RestApiResponse.success("일정이 수정되었습니다.");
     }
 
     @SwaggerApiSpec(summary = "일정 삭제", description = "일정을 삭제합니다.")
     @DeleteMapping("/{scheduleId}")
-    public RestApiResponse<Void> deleteSchedule(@PathVariable Integer scheduleId) {
-        scheduleService.deleteSchedule(scheduleId);
-        return RestApiResponse.success("일정 삭제 완료");
+    public RestApiResponse<Void> deleteSchedule(
+            @PathVariable Integer familyId,
+            @PathVariable String scheduleId) {
+        scheduleService.deleteSchedule(familyId, scheduleId);
+        return RestApiResponse.success("일정이 삭제되었습니다.");
     }
 }

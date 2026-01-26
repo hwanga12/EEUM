@@ -12,6 +12,7 @@ public enum ErrorCode {
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON002", "서버 내부 에러가 발생했습니다."),
     ENTITY_NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON003", "존재하지 않는 리소스입니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON004", "지원하지 않는 HTTP 메서드입니다."),
+    DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "COMMON005", "이미 존재하는 리소스입니다."),
 
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH001", "유효하지 않은 토큰입니다."),
 
@@ -25,6 +26,11 @@ public enum ErrorCode {
     ALREADY_FAMILY_REPRESENTATIVE(HttpStatus.BAD_REQUEST, "FAMILY007", "이미 해당 가족 그룹의 대표자입니다."),
     INVALID_INVITE_CODE(HttpStatus.NOT_FOUND, "FAMILY008", "유효하지 않은 초대 코드입니다."),
     FORBIDDEN_FAMILY_ACCESS(HttpStatus.FORBIDDEN, "FAMILY009", "해당 가족 그룹에 접근할 권한이 없습니다.");
+
+    // 일정
+    SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "SCHEDULE001", "존재하지 않는 일정입니다."),
+    INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "SCHEDULE002", "종료일은 시작일보다 빠를 수 없습니다."),
+    RESERVED_TITLE(HttpStatus.BAD_REQUEST, "SCHEDULE003", "'EXCLUDED'는 사용할 수 없는 일정 제목입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

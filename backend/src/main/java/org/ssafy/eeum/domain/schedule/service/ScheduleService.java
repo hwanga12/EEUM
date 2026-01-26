@@ -9,7 +9,7 @@ import org.ssafy.eeum.domain.schedule.dto.ScheduleResponseDTO;
 import org.ssafy.eeum.domain.schedule.entity.RepeatType;
 import org.ssafy.eeum.domain.schedule.entity.Schedule;
 import org.ssafy.eeum.domain.schedule.repository.ScheduleRepository;
-import org.ssafy.eeum.domain.user.entity.User;
+import org.ssafy.eeum.domain.auth.entity.User;
 import org.ssafy.eeum.global.error.exception.CustomException;
 import org.ssafy.eeum.global.error.model.ErrorCode;
 import org.ssafy.eeum.global.infra.redis.RedisService;

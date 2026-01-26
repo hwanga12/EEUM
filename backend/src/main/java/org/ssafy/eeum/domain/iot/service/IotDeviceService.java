@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.ssafy.eeum.domain.iot.dto.IotDeviceMqttDTO;
 import org.ssafy.eeum.domain.iot.dto.IotDeviceRequestDTO;
 import org.ssafy.eeum.domain.iot.dto.IotDeviceResponseDTO;
 import org.ssafy.eeum.domain.iot.dto.IotDeviceUpdateDTO;
@@ -62,10 +63,12 @@ public class IotDeviceService {
         iotDeviceRepository.delete(device);
     }
 
-    public List<IotDeviceResponseDTO> getDevicesBySerialNumber(String serialNumber) {
+    public List<IotDeviceMqttDTO> getDevicesBySerialNumber(String serialNumber) {
         IotDevice device = iotDeviceRepository.findBySerialNumber(serialNumber)
                 .orElseThrow(() -> new CustomException(ErrorCode.ENTITY_NOT_FOUND));
 
-        return getDevicesByGroup(device.getGroupId());
+        return iotDeviceRepository.findAllByGroupId(device.getGroupId()).stream()
+                .map(IotDeviceMqttDTO::of)
+                .collect(Collectors.toList());
     }
 }

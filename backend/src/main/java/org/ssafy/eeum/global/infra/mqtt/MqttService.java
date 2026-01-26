@@ -84,8 +84,7 @@ public class MqttService {
             }
 
             String serialNumber = node.path("serial_number").asText();
-            List<IotDeviceResponseDTO> devices = iotDeviceService
-                    .getDevicesBySerialNumber(serialNumber);
+            List<IotDeviceMqttDTO> devices = iotDeviceService.getDevicesBySerialNumber(serialNumber);
 
             if (devices.isEmpty()) {
                 log.warn("No devices found for serialNumber: {}", serialNumber);

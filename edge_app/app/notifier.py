@@ -28,6 +28,9 @@ class Notifier:
     def send_event(self, payload: Dict[str, Any]):
         self._put(("event", payload, None))
 
+    def send_event_rpi_only(self, payload: Dict[str, Any]):
+        self._put(("event_rpi", payload, None))  # 추가: rpi만
+
     def send_clip(self, event_id: str, clip_path: str, payload: Dict[str, Any]):
         payload2 = dict(payload)
         payload2["event_id"] = event_id
@@ -62,11 +65,13 @@ class Notifier:
                 continue
 
             if kind == "event":
-                self._post_json(f"{self.server_url}/edge/events", payload)
-                self._post_json(f"{self.rpi_url}/edge/events", payload)
+                self._post_json(f"{self.server_url}/event", payload)
+                self._post_json(f"{self.rpi_url}/event", payload)
+
+            elif kind == "event_rpi":
+                self._post_json(f"{self.rpi_url}/event", payload)
 
             elif kind == "clip":
-                self._post_clip(f"{self.server_url}/edge/clips", payload, clip_path)
-                self._post_clip(f"{self.rpi_url}/edge/clips", payload, clip_path)
-
+                self._post_clip(f"{self.server_url}/clips", payload, clip_path)
+                self._post_clip(f"{self.rpi_url}/clips", payload, clip_path)
             self.q.task_done()

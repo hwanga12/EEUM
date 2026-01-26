@@ -14,11 +14,12 @@ from .config import (
     DETERMINISTIC, MODEL_PATH, RUNS_DIR, 
     DEVICE_ID, LOCATION_ID, SERVER_URL, RPI_URL
 )
-from .level1 import Level1Params, Level1Engine
+from .level1 import Level1Params, Level1Engine, PresenceParams, PresenceEngine
 from .clip_recorder import ClipRecorder
 from .replay import start_replay_thread
 from .live import LivePipeline
 from .notifier import Notifier
+
 
 app = FastAPI()
 
@@ -84,6 +85,12 @@ def write_obs(obs: Dict[str, Any]):
         record_fp.flush()
 
 # ---------- level1 + clip ----------
+presence_engine = PresenceEngine(PresenceParams(
+    enter_hits=5,
+    exit_hits=10,
+    min_quality=0.10,
+    cool_down_s=0.5,
+))
 level1_engine = Level1Engine(Level1Params())
 clip_recorder = ClipRecorder()
 last_level1_event: Optional[Dict[str, Any]] = None
@@ -180,8 +187,6 @@ def pose():
             return JSONResponse(status_code=503, content={"error": "no observation yet"})
         return latest_obs
 
-from fastapi import Query
-
 @app.get("/stream")
 def stream(overlay: str = Query("smooth", pattern="^(raw|smooth|both)$")):
     def gen():
@@ -200,6 +205,24 @@ def stream(overlay: str = Query("smooth", pattern="^(raw|smooth|both)$")):
                     continue
 
                 ts_now = float(obs["ts"])
+
+                # 사람 등장/사라짐 이벤트 체크
+                pe = presence_engine.step(obs)
+                if pe is not None:
+                    ptype = pe["data"]["event"]  # "enter" | "exit"
+                    event_name = "enter" if ptype == "enter" else "exit"
+
+                    payload = {
+                        "kind": "vision",
+                        "device_id": DEVICE_ID,
+                        "data": {
+                            "location_id": LOCATION_ID,
+                            "event": event_name,
+                        },
+                        "ts": float(ts_now),
+                    }
+                    print(payload) 
+                    notifier.send_event_rpi_only(payload)
 
                 # 링버퍼 업데이트(클립 저장용)
                 clip_recorder.push(ts_now, frame)
@@ -220,7 +243,6 @@ def stream(overlay: str = Query("smooth", pattern="^(raw|smooth|both)$")):
                     if et == "abnormal_enter":
                         incident_ts = float(ev.get("ts", ts_now))
                         incident_event_id = f"incident_{time.strftime('%Y%m%d_%H%M%S')}"
-                        # (원하면) 여기서 "의심" 단계 서버 전송도 가능하지만 지금은 X
 
                     # 2) 회복: 사건 폐기 (저장 X)
                     elif et == "abnormal_exit":
@@ -239,13 +261,15 @@ def stream(overlay: str = Query("smooth", pattern="^(raw|smooth|both)$")):
                         # (A) 서버/RPi에 level1 이벤트 JSON 전송
                         t0 = (obs.get("tracks") or [{}])[0]
                         payload = {
+                            "kind": "vision",
                             "device_id": DEVICE_ID,
-                            "has_person": bool(t0.get("has_person", False)),
-                            "location": LOCATION_ID,
+                            "data": {
+                                "location_id": LOCATION_ID,
+                                "event": "fall",
+                                "level": 1,
+                                "has_person": bool(t0.get("has_person", False)),
+                            },
                             "detected_at": float(ts_now),
-                            "level": 1,
-                            "event_id": current_event_id,
-                            # "clip_status": "saving",  # 지금은 버퍼에서 저장 중 # 전송할거면 무조건 저장하니까 굳이 상태 표시 X
                         }
                         notifier.send_event(payload)
 

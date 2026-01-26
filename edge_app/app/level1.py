@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, List, Tuple
+from .config import DEVICE_ID, LOCATION_ID
 
 def bbox_aspect(bbox: Optional[List[float]]) -> Optional[float]:
     if not bbox or len(bbox) != 4:
@@ -328,4 +329,83 @@ class Level1Engine:
 
         # Optional: in LEVEL1, you might keep returning None to avoid spamming.
         # If you want "recover from LEVEL1", define policy here.
+        return None
+
+
+@dataclass
+class PresenceParams:
+    enter_hits: int = 5          # 연속 N프레임 "있음"이면 enter 확정
+    exit_hits: int = 10          # 연속 N프레임 "없음"이면 exit 확정
+    min_quality: float = 0.10    # has_person True여도 quality 낮으면 absent 취급
+    cool_down_s: float = 0.5     # 이벤트 연속 발사 방지(선택)
+
+class PresenceEngine:
+    def __init__(self, p: PresenceParams):
+        self.p = p
+        self.state = "ABSENT"   # ABSENT | PRESENT
+        self.present_cnt = 0
+        self.absent_cnt = 0
+        self.last_emit_ts: float = 0.0
+
+    def reset(self):
+        self.state = "ABSENT"
+        self.present_cnt = 0
+        self.absent_cnt = 0
+        self.last_emit_ts = 0.0
+
+    def _is_present(self, obs: Dict[str, Any]) -> bool:
+        tracks = obs.get("tracks") or []
+        if not tracks:
+            return False
+        t0 = tracks[0]
+        if not t0.get("has_person", False):
+            return False
+        q = float(t0.get("quality_score") or 0.0)
+        if q < self.p.min_quality:
+            return False
+        return True
+
+    def step(self, obs: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        ts = float(obs.get("ts", 0.0))
+        frame_index = int(obs.get("frame_index", -1))
+
+        present = self._is_present(obs)
+
+        if present:
+            self.present_cnt += 1
+            self.absent_cnt = 0
+        else:
+            self.absent_cnt += 1
+            self.present_cnt = 0
+
+        # 쿨다운(선택)
+        if self.p.cool_down_s > 0 and (ts - self.last_emit_ts) < self.p.cool_down_s:
+            return None
+
+        if self.state == "ABSENT" and self.present_cnt >= self.p.enter_hits:
+            self.state = "PRESENT"
+            self.last_emit_ts = ts
+            return {
+                "kind": "vision",
+                "device_id": DEVICE_ID,
+                "data": {
+                    "location_id": LOCATION_ID,
+                    "event": "enter",
+                },
+                "ts": ts,
+            }
+
+        if self.state == "PRESENT" and self.absent_cnt >= self.p.exit_hits:
+            self.state = "ABSENT"
+            self.last_emit_ts = ts
+            return {
+                "kind": "vision",
+                "device_id": DEVICE_ID,
+                "data": {
+                    "location_id": LOCATION_ID,
+                    "event": "exit",
+                },
+                "ts": ts,
+            }
+
         return None

@@ -11,10 +11,11 @@ DETERMINISTIC = os.getenv("DETERMINISTIC", "1") == "1"
 USE_HALF = False if DETERMINISTIC else (os.getenv("USE_HALF", "1") == "1")
 
 MODEL_PATH = os.getenv("MODEL_PATH", "yolov8n-pose.pt")
-DEVICE_ID = os.getenv("DEVICE_ID", "edge_device_01")
-LOCATION_ID = os.getenv("LOCATION_ID", "location_01")
-SERVER_URL = os.getenv("SERVER_URL", "http://example.com/api/notify")
-RPI_URL = os.getenv("RPI_URL", "http://rpi.local/api/notify")  
+DEVICE_ID = os.getenv("DEVICE_ID", "EEUM_J105")
+DEVICE_NAME = os.getenv("DEVICE_NAME", "Jetson-Orin-Nano")
+LOCATION_ID = os.getenv("LOCATION_ID", "LivingRoom")
+SERVER_URL = os.getenv("SERVER_URL", "http://i14a105.p.ssafy.io:8080/eeum")
+RPI_URL = os.getenv("RPI_URL", "http://10.10.0.1:8080/eeum")
 
 # JSONL / Clip 저장 경로
 RUNS_DIR = os.getenv("RUNS_DIR", "runs")

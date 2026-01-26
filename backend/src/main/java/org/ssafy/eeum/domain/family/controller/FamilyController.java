@@ -57,17 +57,21 @@ public class FamilyController {
     @Operation(summary = "가족 그룹 멤버 목록 조회", description = "특정 가족 그룹에 속한 모든 멤버의 목록을 조회합니다.")
     @GetMapping("/{familyId}/members")
     public ResponseEntity<List<FamilyMemberDto>> getFamilyMembers(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long familyId) {
-        List<FamilyMemberDto> responseDto = familyService.getFamilyMembers(familyId);
+        String userId = userDetails.getUsername();
+        List<FamilyMemberDto> responseDto = familyService.getFamilyMembers(userId, familyId);
         return ResponseEntity.ok(responseDto);
     }
 
     @Operation(summary = "가족 그룹 멤버 상세 조회", description = "특정 가족 그룹 멤버의 상세 정보를 조회합니다.")
     @GetMapping("/{familyId}/members/{memberUserId}")
     public ResponseEntity<FamilyMemberDetailResponseDto> getFamilyMemberDetails(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long familyId,
             @PathVariable Long memberUserId) {
-        FamilyMemberDetailResponseDto responseDto = familyService.getFamilyMemberDetails(familyId, memberUserId);
+        String userId = userDetails.getUsername();
+        FamilyMemberDetailResponseDto responseDto = familyService.getFamilyMemberDetails(userId, familyId, memberUserId);
         return ResponseEntity.ok(responseDto);
     }
 

@@ -90,9 +90,12 @@ public class FamilyService {
     }
 
     @Transactional(readOnly = true)
-    public List<FamilyMemberDto> getFamilyMembers(Long familyId) {
+    public List<FamilyMemberDto> getFamilyMembers(String userId, Long familyId) {
+        User user = userRepository.findById(Integer.parseInt(userId))
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         Family family = familyRepository.findById(familyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.FAMILY_NOT_FOUND));
+        verifyFamilyMember(user, family);
 
         List<Supporter> supporters = supporterRepository.findAllByFamily(family);
 
@@ -111,9 +114,13 @@ public class FamilyService {
     }
 
     @Transactional(readOnly = true)
-    public FamilyMemberDetailResponseDto getFamilyMemberDetails(Long familyId, Long memberUserId) {
+    public FamilyMemberDetailResponseDto getFamilyMemberDetails(String userId, Long familyId, Long memberUserId) {
+        User user = userRepository.findById(Integer.parseInt(userId))
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         Family family = familyRepository.findById(familyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.FAMILY_NOT_FOUND));
+        verifyFamilyMember(user, family);
+        
         User memberUser = userRepository.findById(memberUserId.intValue())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
         Supporter supporter = supporterRepository.findByUserAndFamily(memberUser, family)
@@ -125,6 +132,11 @@ public class FamilyService {
         FamilyMemberDetailResponseDto responseDto = FamilyMemberDetailResponseDto.of(memberUser, supporter);
         responseDto.setProfileImage(presignedUrl);
         return responseDto;
+    }
+
+    private void verifyFamilyMember(User user, Family family) {
+        supporterRepository.findByUserAndFamily(user, family)
+                .orElseThrow(() -> new CustomException(ErrorCode.FORBIDDEN_FAMILY_ACCESS));
     }
 
     private String generateInviteCode() {

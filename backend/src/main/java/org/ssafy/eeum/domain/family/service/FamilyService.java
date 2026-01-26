@@ -165,6 +165,34 @@ public class FamilyService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public InviteInfoResponseDto getInviteInfo(String inviteCode) {
+        Family family = familyRepository.findByInviteCode(inviteCode)
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INVITE_CODE)); // Or a more specific error if needed
+
+        String inviterName = family.getUser().getName();
+        String groupName = family.getGroupName();
+
+        return InviteInfoResponseDto.builder()
+                .groupName(groupName)
+                .inviterName(inviterName)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public JoinPreviewResponseDto getFamilyJoinPreview(String inviteCode) {
+        Family family = familyRepository.findByInviteCode(inviteCode)
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_INVITE_CODE));
+
+        String familyName = family.getGroupName();
+        String inviterName = family.getUser().getName();
+
+        return JoinPreviewResponseDto.builder()
+                .familyName(familyName)
+                .inviterName(inviterName)
+                .build();
+    }
+
     private void verifyFamilyMember(User user, Family family) {
         supporterRepository.findByUserAndFamily(user, family)
                 .orElseThrow(() -> new CustomException(ErrorCode.FORBIDDEN_FAMILY_ACCESS));

@@ -22,6 +22,8 @@ import org.ssafy.eeum.domain.family.dto.LeaveFamilyResponseDto;
 import org.ssafy.eeum.domain.family.dto.UpdateFamilyRequestDto;
 import org.ssafy.eeum.domain.family.dto.UpdateFamilyResponseDto;
 import org.ssafy.eeum.domain.family.dto.UpdateMemberRelationshipRequestDto;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.ssafy.eeum.domain.family.dto.JoinPreviewResponseDto;
 import org.ssafy.eeum.domain.family.service.FamilyService;
 import org.ssafy.eeum.global.auth.model.CustomUserDetails;
 
@@ -34,6 +36,14 @@ import java.util.List;
 public class FamilyController {
 
     private final FamilyService familyService;
+
+    @Operation(summary = "가족 그룹 참여 미리보기", description = "초대 코드를 사용하여 가족 그룹 참여 정보를 미리 봅니다.")
+    @GetMapping("/join/preview")
+    public ResponseEntity<JoinPreviewResponseDto> getFamilyJoinPreview(
+            @RequestParam String code) {
+        JoinPreviewResponseDto responseDto = familyService.getFamilyJoinPreview(code);
+        return ResponseEntity.ok(responseDto);
+    }
 
     @Operation(summary = "가족 그룹 생성", description = "새로운 가족 그룹을 생성합니다.")
     @PostMapping

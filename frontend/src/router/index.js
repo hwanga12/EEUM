@@ -2,8 +2,14 @@ import { createRouter, createWebHashHistory } from 'vue-router';
 import MyProfileView from '../views/MyProfileView.vue';
 import MyProfileEdit from '../views/MyProfileEdit.vue';
 import VoiceSample from '../views/VoiceSample.vue';
+import LoginView from '../views/LoginView.vue';
 
 const routes = [
+  {
+    path: '/login',      // 브라우저 주소창에 들어갈 주소
+    name: 'login',
+    component: LoginView
+  },
   {
     path: '/',
     redirect: '/my-profile-view', //로그인 페이지로 변경예정

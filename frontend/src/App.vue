@@ -1,8 +1,8 @@
 <script setup>
-import { onMounted } from 'vue';
-import { useUserStore } from './stores/user';
+import { onMounted } from 'vue'
+import { useUserStore } from './stores/user'
 
-const userStore = useUserStore();
+const userStore = useUserStore()
 
 onMounted(async () => {
   // 1. 주소창에서 accessToken이 있는지 확인 (백엔드 성공 핸들러가 보낸 것)
@@ -28,3 +28,13 @@ onMounted(async () => {
 <template>
   <router-view />
 </template>
+
+<style>
+/* 전체 화면 스타일링 */
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+}
+</style>

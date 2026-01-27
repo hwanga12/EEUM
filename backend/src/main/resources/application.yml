@@ -1,10 +1,7 @@
-server:
-  # Nginx에서 보낸 X-Forwarded-Proto(https) 헤더를 읽어서
-  # 리다이렉트 주소를 https로 자동 생성하게 합니다. (8080 포트 노출 방지)
-  forward-headers-strategy: native
-
+# 1. 로컬 환경 설정 (기본값)
 spring:
   profiles:
+    #    active: local
     include: secret
 
   cloud:
@@ -37,8 +34,16 @@ jwt:
 logging:
   level:
     org.ssafy.eeum: debug
-
-    # 카카오 디버깅용
     org.springframework.security: debug
     org.springframework.security.oauth2: debug
 
+---
+# 2. 배포 환경 설정 (프로필 이름: prod)
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+server:
+  # 배포 환경(Nginx 뒤)에서만 이 설정을 활성화합니다.
+  forward-headers-strategy: native

@@ -6,18 +6,42 @@ import time
 @dataclass
 class Event:
     kind: str
-    device: str
+    device_id: str
     data: dict[str, Any]
-    ts: float = field(default_factory=lambda: time.time())
+    detected_at: float = field(default_factory=lambda: time.time())
 
 class MonitorState:
     def __init__(self):
-        self.last_pir_ts: Optional[float] = None
         self.alert: bool = False
 
-        self._timer_task: Optional[asyncio.Task] = None
-        self.queue: asyncio.Queue[Event] = asyncio.Queue(maxsize=2)
+        self.queue: asyncio.Queue[Event] = asyncio.Queue(maxsize=16)
 
+        # ---- 최근 이벤트/디바이스 상태 ----
+        self.last_event_by_device: dict[str, dict] = {}
+        self.device_store = None
+
+        # ---- Occupancy(사람 존재) ----
+        self.occupancy_present: bool = False
+        self.occupancy_dev: Optional[str] = None     # device_id
+        self.occupancy_kind: Optional[str] = None
+        self.occupancy_since_ts: Optional[float] = None
+        self.last_pir_ts: Optional[float] = None
+        self.last_vision_ts: Optional[float] = None
+        self.occupancy_location: Optional[str] = None
+        self.vision_active: bool = False
+
+        # ---- Fall FSM ----
+        self.fall_active: bool = False
+        self.fall_level: int = 0
+        self.fall_stage: str = "IDLE"                   # IDLE/ASK_TTS/WAIT_SST/LLM/DONE
+        self.fall_started_ts: float = 0.0
+        self.fall_last_stage_ts: float = 0.0
+        self.fall_device: Optional[str] = None
+        self.fall_answer_text: Optional[str] = None
+
+        # ---- 타이머/작업 관리 ----
+        self.tasks: Dict[str, asyncio.Task] = {}         # key -> Task
+        
         # ---- Wi-Fi cache ----
         self.wifi_active: Optional[str] = None
         self.wifi_scan: List[Dict[str, Any]] = []

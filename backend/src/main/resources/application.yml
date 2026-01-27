@@ -12,6 +12,7 @@ spring:
     redis:
       host: localhost
       port: 6379
+      password: enumenum
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -23,14 +24,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
-# Swagger 설정 추가
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-    disable-swagger-default-url: true
 
 jwt:
   private-key-path: certs/private_key_pkcs8.pem

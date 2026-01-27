@@ -8,7 +8,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080', // Your backend server address
+        target: 'https://i14a105.p.ssafy.io', // Your backend server address
         changeOrigin: true,
         secure: false, // For local development with HTTP
         // rewrite: (path) => path.replace(/^\/api/, '') // Only if your backend doesn't expect /api prefix

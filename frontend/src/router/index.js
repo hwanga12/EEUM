@@ -1,33 +1,27 @@
-// src/router/index.js
-
 import { createRouter, createWebHashHistory } from 'vue-router';
 import MyProfileView from '../views/MyProfileView.vue';
 import MyProfileEdit from '../views/MyProfileEdit.vue';
 import VoiceSample from '../views/VoiceSample.vue';
-import LoginView from '../views/Login.vue'; // 1. 여기서 'LoginView'로 가져옴
+import LoginView from '../views/Login.vue'; 
 import HomePage from '../views/HomePage.vue';
 import MemberDetailView from '../views/MemberDetailView.vue';
-import LoginPage from '../views/LoginPage.vue';
 import JoinGroupView from '../views/JoinGroupView.vue';
 import GroupSetupLayout from '../views/group-setup/GroupSetupLayout.vue';
 import GroupSetupStep1 from '../views/group-setup/Step1GroupName.vue';
 import GroupSetupStep2 from '../views/group-setup/Step2HealthInfo.vue';
 import GroupSetupStep3 from '../views/group-setup/Step3Medication.vue';
 
-
 import { useUserStore } from '@/stores/user';
-import api from '@/services/api';
 
 const routes = [
   {
-    path: '/login',
-    name: 'login',
-    component: LoginView // 2. [수정] 위에서 가져온 이름인 'LoginView'로 변경! (Login -> LoginView)
+    path: '/',
+    redirect: '/login', // 처음 접속 시 로그인 페이지로 보냄
   },
   {
-    path: '/',
-    redirect: '/login', // [추천] 바로 테스트할 수 있게 일단 로그인으로 보내버리세요
-    redirect: '/home',
+    path: '/login',
+    name: 'login', // 소문자 login으로 통일
+    component: LoginView 
   },
   {
     path: '/home',
@@ -51,30 +45,14 @@ const routes = [
   },
   {
     path: '/groups/:familyId/edit',
+    name: 'GroupEdit',
     component: GroupSetupLayout,
     children: [
       { path: '', redirect: 'step1' },
-      {
-        path: 'step1',
-        name: 'GroupEditStep1',
-        component: GroupSetupStep1,
-      },
-      {
-        path: 'step2',
-        name: 'GroupEditStep2',
-        component: GroupSetupStep2,
-      },
-      {
-        path: 'step3',
-        name: 'GroupEditStep3',
-        component: GroupSetupStep3,
-      },
+      { path: 'step1', name: 'GroupEditStep1', component: GroupSetupStep1 },
+      { path: 'step2', name: 'GroupEditStep2', component: GroupSetupStep2 },
+      { path: 'step3', name: 'GroupEditStep3', component: GroupSetupStep3 },
     ],
-  },
-  {
-    path: '/login',
-    name: 'Login',
-    component: LoginPage,
   },
   {
     path: '/join',
@@ -83,39 +61,23 @@ const routes = [
     beforeEnter: async (to, from, next) => {
       const userStore = useUserStore();
       const inviteCode = to.query.code;
-
       if (!inviteCode) {
-        console.warn('No invite code provided for join.');
         next({ name: 'HomePage' });
         return;
       }
-
       sessionStorage.setItem('redirectAfterLogin', to.fullPath);
-
       try {
         await userStore.fetchUser();
-
-        if (userStore.isAuthenticated) { 
-          next(); 
-        } else {
-          next({ name: 'Login' });
-        }
-      } catch (fetchUserError) {
-          console.error("Error fetching user during route guard:", fetchUserError);
-          next({ name: 'Login' });
-      }
+        if (userStore.isAuthenticated) { next(); } 
+        else { next({ name: 'login' }); }
+      } catch (e) { next({ name: 'login' }); }
     },
-  },
-  {
-    path: '/api/auth/login/social',
-    redirect: '/my-profile-edit',
   },
   {
     path: '/voice-sample',
     name: 'VoiceSample',
     component: VoiceSample,
   },
-  // ... 생략
 ];
 
 const router = createRouter({
@@ -123,18 +85,15 @@ const router = createRouter({
   routes,
 });
 
-
+// 전역 가드 설정
 router.beforeEach((to, from, next) => {
-  if (to.name === 'Login') {
-    const redirectPath = sessionStorage.getItem('redirectAfterLogin');
-    if (redirectPath) {
-      console.log("Redirect path stored for login completion:", redirectPath);
-    }
+  if (to.name === 'login' && !localStorage.getItem('accessToken')) {
+    next();
   } else if (to.name === 'JoinGroup' && !to.query.code) {
     next({ name: 'HomePage' });
-    return;
+  } else {
+    next();
   }
-  next();
 });
 
 export default router;

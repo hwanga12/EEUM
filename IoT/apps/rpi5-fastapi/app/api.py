@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from .config import AP_IFACE, STA_IFACE
 from .ap_manager import async_get_ipv4_addr
 from .state import MonitorState, Event
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from .wifi_manager import (
         async_provision_connect_wlan0,
         async_bind_profile_to_wlan0,
@@ -17,8 +17,9 @@ from .wifi_manager import (
 
 class EventIn(BaseModel):
     kind: str
-    device: str
+    device_id: str
     data: Dict[str, Any]
+    detected_at: Optional[float] = None
 
 class WifiConnectIn(BaseModel):
     ssid: str
@@ -168,13 +169,6 @@ function setBusy(b){
   document.body.style.cursor = b ? "wait" : "default";
 }
 
-// 설정 화면 열려있다는 신호(scan loop 동작 조건)
-// connect 중엔 ping 쉬기
-let uiPingTimer = setInterval(()=>{
-  if(connecting) return;
-  fetch("/wifi/ui/ping", { method:"POST" }).catch(()=>{});
-}, 3000);
-
 let profilesLoadedOnce = false;
 
 async function scan(){
@@ -199,10 +193,6 @@ async function scan(){
     opt.value = ap.ssid;
     opt.textContent = `${ap.in_use ? "* " : ""}${ap.ssid} (${ap.signal}) ${ap.security}`;
     sel.appendChild(opt);
-  }
-
-  if ((data.aps||[]).length > 0){
-    document.getElementById("ssidInput").value = data.aps[0].ssid;
   }
 
   if(profilesLoadedOnce) await loadProfiles();
@@ -431,13 +421,21 @@ async function connect(){
 async function initialLoad(){
   // ping 즉시
   fetch("/wifi/ui/ping", { method:"POST" }).catch(()=>{});
+  // 설정 화면 열려있다는 신호(scan loop 동작 조건)
+  // connect 중엔 ping 쉬기
+  let uiPingTimer = setInterval(()=>{
+    if(connecting) return;
+    fetch("/wifi/ui/ping", { method:"POST" }).catch(()=>{});
+  }, 3000);
+  await scan();
+  await loadProfiles();
 
-  for(let i=0;i<6;i++){
-    await scan();
-    await loadProfiles();
-    if(visibleSsids.size > 0) return;   // 스캔 채워지면 종료
-    await sleep(500);                  // 0.5초 간격 재시도
-  }
+  setInterval(() => {
+    scan().catch(()=>{});
+  }, 3000);
+  setInterval(() => {
+    loadProfiles().catch(()=>{});
+  }, 3000);
 }
 
 initialLoad();
@@ -460,7 +458,7 @@ initialLoad();
         return {
                 "alert": state.alert,
                 "last_pir_ts": state.last_pir_ts,
-                "timer_running": state._timer_task is not None
+                "timer_running": state.tasks.get("pir_no_motion") is not None or state.tasks.get("vision_exit_timeout") is not None
         }
 
     @app.post("/wifi/ui/ping")
@@ -468,9 +466,9 @@ initialLoad();
         state.wifi_ui_last_ping = time.time()
         return {"ok": True, "ts": state.wifi_ui_last_ping}
 
-    @app.post("/api/event")
+    @app.post("/eeum/event")
     async def event(data: EventIn):
-        ev = Event(**data.model_dump())
+        ev = Event(**data.model_dump(exclude_none=True))
         try:
             state.queue.put_nowait(ev)
         except asyncio.QueueFull:

@@ -9,7 +9,8 @@ import JoinGroupView from '../views/JoinGroupView.vue';
 import GroupSetupLayout from '../views/group-setup/GroupSetupLayout.vue';
 import GroupSetupStep1 from '../views/group-setup/Step1GroupName.vue';
 import GroupSetupStep2 from '../views/group-setup/Step2HealthInfo.vue';
-import GroupSetupStep3 from '../views/group-setup/Step3Medication.vue';
+import GroupSetupStep3 from '../views/group-setup/Step3EmergencyContact.vue';
+import GroupSetupStep4 from '../views/group-setup/Step4Medication.vue';
 
 
 import { useUserStore } from '@/stores/user';
@@ -60,6 +61,11 @@ const routes = [
         name: 'GroupEditStep3',
         component: GroupSetupStep3,
       },
+      {
+        path: 'step4',
+        name: 'GroupEditStep4',
+        component: GroupSetupStep4,
+      },
     ],
   },
   {
@@ -86,14 +92,14 @@ const routes = [
       try {
         await userStore.fetchUser();
 
-        if (userStore.isAuthenticated) { 
-          next(); 
+        if (userStore.isAuthenticated) {
+          next();
         } else {
           next({ name: 'Login' });
         }
       } catch (fetchUserError) {
-          console.error("Error fetching user during route guard:", fetchUserError);
-          next({ name: 'Login' });
+        console.error("Error fetching user during route guard:", fetchUserError);
+        next({ name: 'Login' });
       }
     },
   },

@@ -41,4 +41,13 @@ export const updateUserProfile = (data) => {
 };
 
 // ... 나머지 함수들
+export const joinFamilyWithCode = (inviteCode) => {
+  return apiClient.post('/families/join', inviteCode, {
+    headers: {
+      'Content-Type': 'text/plain',
+    },
+    transformRequest: [(data) => data],
+  });
+};
+
 export default apiClient;

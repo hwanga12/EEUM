@@ -178,9 +178,11 @@ const handleLogin = async () => {
 
 // 카카오 로그인
 const handleKakaoLogin = () => {
-  const KAKAO_AUTH_URL = `https://kauth.kakao.com/oauth/authorize?client_id=${import.meta.env.VITE_KAKAO_API_KEY}&redirect_uri=${import.meta.env.VITE_KAKAO_REDIRECT_URI}&response_type=code`
-  window.location.href = KAKAO_AUTH_URL
-}
+  // 핵심: 카카오로 직접 가는 게 아니라, 우리 '백엔드 서버'의 로그인 시작점으로 보냅니다.
+  // 그래야 로그인이 끝나고 백엔드가 우리 로컬(5173)로 토큰을 던져줄 수 있어요!
+  const BACKEND_LOGIN_URL = `https://i14a105.p.ssafy.io/api/auth/login/social/kakao`;
+  window.location.href = BACKEND_LOGIN_URL;
+};
 </script>
 
 <style scoped>

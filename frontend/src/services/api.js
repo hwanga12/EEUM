@@ -11,15 +11,14 @@ const apiClient = axios.create({
 // [중요] 모든 요청에 토큰을 자동으로 붙여주는 인터셉터입니다.
 apiClient.interceptors.request.use(
   (config) => {
-    // localStorage의 키값이 'accessToken'인지 반드시 확인해야 합니다.
-    const token = localStorage.getItem('accessToken');
+    // localStorage 또는 sessionStorage에서 토큰 확인
+    const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
 
     if (token) {
       // 반드시 Bearer 뒤에 한 칸 공백이 있어야 합니다.
-      // 반드시 Bearer 뒤에 한 칸 공백이 있어야 합니다.
       config.headers.Authorization = `Bearer ${token}`;
     } else {
-      console.log("localStorage에 토큰이 없습니다.");
+      console.log("토큰이 없습니다.");
     }
     return config;
   },
@@ -48,6 +47,10 @@ export const joinFamilyWithCode = (inviteCode) => {
     },
     transformRequest: [(data) => data],
   });
+};
+
+export const logout = () => {
+  return apiClient.post('/auth/logout');
 };
 
 export default apiClient;

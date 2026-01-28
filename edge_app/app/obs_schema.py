@@ -70,6 +70,7 @@ def build_observation(
             "keypoints_smooth": None, # 추가 (smoothing에서 채움)
             "keypoints": kps,         # 기존 유지(호환)
             "quality_score": float(quality),
+            "frame_shape": (frame_h, frame_w),  # EMA 프레임 크기 변화 감지용
         }
     )
     return obs

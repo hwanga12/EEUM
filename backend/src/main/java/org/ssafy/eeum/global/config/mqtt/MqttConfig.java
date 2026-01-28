@@ -84,7 +84,7 @@ public class MqttConfig {
 
         Mqttv5PahoMessageDrivenChannelAdapter adapter = new Mqttv5PahoMessageDrivenChannelAdapter(
                 mqttConnectionOptions, uniqueInboundId, "eeum/sensor/data", "eeum/ai/sentiment", "eeum/family/code",
-                "eeum/init/device/+/req", "eeum/fall/response");
+                "eeum/init/device/+/req", "eeum/fall/response", "eeum/init/device/pair/req");
 
         adapter.setCompletionTimeout(5000);
         adapter.setQos(1);

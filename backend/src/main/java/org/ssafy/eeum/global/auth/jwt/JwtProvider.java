@@ -54,8 +54,14 @@ public class JwtProvider {
         return createToken(userId, email, role, null, jwtProperties.getRefreshTokenExpiration());
     }
 
-    public String createDeviceToken(String serialNumber, Integer groupId) {
-        return createToken(0, serialNumber, "ROLE_DEVICE", groupId, jwtProperties.getAccessTokenExpiration() * 30);
+    public String createDeviceAccessToken(Integer groupId) {
+        // 기기는 토큰 갱신 이슈를 최소화하기 위해 1년(365일) 동안 유효하도록 설정
+        long oneYear = 1000L * 60 * 60 * 24 * 365;
+        return createToken(0, "GROUP:" + groupId, "ROLE_DEVICE", groupId, oneYear);
+    }
+
+    public String createDeviceRefreshToken(Integer groupId) {
+        return createToken(0, "GROUP:" + groupId, "ROLE_DEVICE", groupId, jwtProperties.getRefreshTokenExpiration());
     }
 
     private String createToken(Number userId, String email, String role, Integer groupId, long expiration) {

@@ -99,6 +99,14 @@ public class FallEventService {
         return response;
     }
 
+    /**
+     * FallEvent 저장 (SensorEventService에서 호출)
+     */
+    @Transactional
+    public FallEvent saveFallEvent(FallEvent fallEvent) {
+        return fallEventRepository.save(fallEvent);
+    }
+
     @Transactional
     public void completeFallLog(String videoPath) {
         FallEvent event = fallEventRepository.findByVideoPath(videoPath)

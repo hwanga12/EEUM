@@ -12,7 +12,11 @@ import java.util.List;
 public class IotDeviceInitResponseDTO {
     private String status;
     private String message;
-    private String token;
+    @JsonProperty("access_token")
+    private String accessToken;
+
+    @JsonProperty("refresh_token")
+    private String refreshToken;
 
     @JsonProperty("group_id")
     private Integer groupId;
@@ -22,5 +26,5 @@ public class IotDeviceInitResponseDTO {
     @JsonProperty("serial_number")
     private String serialNumber;
 
-    private List<IotDeviceMqttDTO> devices;
+    private List<IotDeviceMqttMessageResponseDTO> devices;
 }

@@ -90,8 +90,7 @@ public class User {
         if (email != null && !email.isEmpty()) {
             this.email = email;
         }
-        if ((this.profileImage == null || this.profileImage.isEmpty()) && profileImage != null
-                && !profileImage.isEmpty()) {
+        if ((this.profileImage == null || this.profileImage.isEmpty()) && profileImage != null && !profileImage.isEmpty()) {
             this.profileImage = profileImage;
         }
     }

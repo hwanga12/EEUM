@@ -3,6 +3,7 @@
     <div v-if="show" class="absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg z-20 origin-top-right">
       <div class="py-1">
         <router-link
+          v-if="isRepresentative"
           :to="{ name: 'GroupEditStep1', params: { familyId } }"
           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-center"
         >
@@ -25,9 +26,18 @@ const props = defineProps({
     type: Number,
     required: false,
   },
+  isRepresentative: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['leave-group']);
+
+import { watch } from 'vue';
+watch(() => props.isRepresentative, (newVal) => {
+    console.log('SettingsDropdown: isRepresentative prop updated:', newVal, 'type:', typeof newVal);
+}, { immediate: true });
 </script>
 
 <style scoped>

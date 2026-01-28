@@ -26,6 +26,16 @@ const routes = [
     component: LoginView
   },
   {
+    path: '/signup',
+    name: 'signup',
+    component: () => import('../views/SignupView.vue')
+  },
+  {
+    path: '/logout',
+    name: 'logout',
+    component: () => import('../views/LogoutView.vue')
+  },
+  {
     path: '/home',
     name: 'HomePage',
     component: HomePage,
@@ -110,7 +120,11 @@ const router = createRouter({
 
 // 전역 가드 설정
 router.beforeEach((to, from, next) => {
-  if (to.name === 'login' && !localStorage.getItem('accessToken')) {
+  const isAuthenticated = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+
+  if (to.name === 'login' && isAuthenticated) {
+    next({ name: 'HomePage' }); // 이미 로그인된 경우 홈으로
+  } else if (to.name === 'login' && !isAuthenticated) {
     next();
   } else if (to.name === 'JoinGroup' && !to.query.code) {
     next({ name: 'HomePage' });

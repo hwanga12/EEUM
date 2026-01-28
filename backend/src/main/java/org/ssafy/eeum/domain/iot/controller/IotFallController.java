@@ -9,7 +9,7 @@ import org.ssafy.eeum.global.common.response.RestApiResponse;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/iot/falls")
+@RequestMapping("/api/iot/falls")
 @RequiredArgsConstructor
 public class IotFallController {
 

@@ -47,29 +47,34 @@ public class JwtProvider {
     }
 
     public String createAccessToken(Number userId, String email, String role) {
-        return createToken(userId, email, role, jwtProperties.getAccessTokenExpiration());
+        return createToken(userId, email, role, null, jwtProperties.getAccessTokenExpiration());
     }
 
     public String createRefreshToken(Number userId, String email, String role) {
-        return createToken(userId, email, role, jwtProperties.getRefreshTokenExpiration());
+        return createToken(userId, email, role, null, jwtProperties.getRefreshTokenExpiration());
     }
 
-    public String createDeviceToken(String serialNumber) {
-        return createToken(0, serialNumber, "ROLE_DEVICE", jwtProperties.getAccessTokenExpiration() * 30);
+    public String createDeviceToken(String serialNumber, Integer groupId) {
+        return createToken(0, serialNumber, "ROLE_DEVICE", groupId, jwtProperties.getAccessTokenExpiration() * 30);
     }
 
-    private String createToken(Number userId, String email, String role, long expiration) {
+    private String createToken(Number userId, String email, String role, Integer groupId, long expiration) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .subject(email)
                 .claim("id", userId)
                 .claim("auth", role)
                 .issuedAt(now)
                 .expiration(expiryDate)
-                .signWith(privateKey, Jwts.SIG.RS256)
-                .compact();
+                .signWith(privateKey, Jwts.SIG.RS256);
+
+        if (groupId != null) {
+            builder.claim("group_id", groupId);
+        }
+
+        return builder.compact();
     }
 
     public Authentication getAuthentication(String token) {
@@ -87,7 +92,8 @@ public class JwtProvider {
         boolean isDevice = authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_DEVICE"));
 
         if (isDevice) {
-            DeviceDetails principal = new DeviceDetails(claims.getSubject(), authorities);
+            Integer groupId = claims.get("group_id", Integer.class);
+            DeviceDetails principal = new DeviceDetails(claims.getSubject(), groupId, authorities);
             return new UsernamePasswordAuthenticationToken(principal, token, authorities);
         } else {
             User user = User.builder()

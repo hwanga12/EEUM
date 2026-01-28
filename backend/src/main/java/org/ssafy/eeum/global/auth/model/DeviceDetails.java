@@ -10,15 +10,18 @@ import java.util.Collections;
 public class DeviceDetails implements UserDetails {
 
     private final String serialNumber;
+    private final Integer groupId;
     private final Collection<? extends GrantedAuthority> authorities;
 
-    public DeviceDetails(String serialNumber) {
+    public DeviceDetails(String serialNumber, Integer groupId) {
         this.serialNumber = serialNumber;
+        this.groupId = groupId;
         this.authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_DEVICE"));
     }
 
-    public DeviceDetails(String serialNumber, Collection<? extends GrantedAuthority> authorities) {
+    public DeviceDetails(String serialNumber, Integer groupId, Collection<? extends GrantedAuthority> authorities) {
         this.serialNumber = serialNumber;
+        this.groupId = groupId;
         this.authorities = authorities;
     }
 
@@ -59,5 +62,9 @@ public class DeviceDetails implements UserDetails {
 
     public String getSerialNumber() {
         return serialNumber;
+    }
+
+    public Integer getGroupId() {
+        return groupId;
     }
 }

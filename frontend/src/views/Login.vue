@@ -168,6 +168,8 @@ const handleLogin = async () => {
     const response = await apiClient.post('/auth/login', {
       email: loginForm.username,
       password: loginForm.password
+    }, {
+      withCredentials: false
     })
 
     const { accessToken } = response.data

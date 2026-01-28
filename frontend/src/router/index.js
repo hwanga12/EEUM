@@ -2,7 +2,7 @@ import { createRouter, createWebHashHistory } from 'vue-router';
 import MyProfileView from '../views/MyProfileView.vue';
 import MyProfileEdit from '../views/MyProfileEdit.vue';
 import VoiceSample from '../views/VoiceSample.vue';
-import LoginView from '../views/Login.vue'; 
+import LoginView from '../views/Login.vue';
 import HomePage from '../views/HomePage.vue';
 import MemberDetailView from '../views/MemberDetailView.vue';
 import JoinGroupView from '../views/JoinGroupView.vue';
@@ -22,7 +22,7 @@ const routes = [
   {
     path: '/login',
     name: 'login', // 소문자 login으로 통일
-    component: LoginView 
+    component: LoginView
   },
   {
     path: '/home',
@@ -46,7 +46,6 @@ const routes = [
   },
   {
     path: '/groups/:familyId/edit',
-    name: 'GroupEdit',
     component: GroupSetupLayout,
     children: [
       { path: '', redirect: 'step1' },
@@ -86,7 +85,7 @@ const routes = [
       sessionStorage.setItem('redirectAfterLogin', to.fullPath);
       try {
         await userStore.fetchUser();
-        if (userStore.isAuthenticated) { next(); } 
+        if (userStore.isAuthenticated) { next(); }
         else { next({ name: 'login' }); }
       } catch (e) { next({ name: 'login' }); }
     },

@@ -75,23 +75,19 @@ const addMedication = () => {
   alert('복약 추가 모달 연결 예정')
 }
 
-const complete = () => {
-  // TODO: Submit all data in setupStore to the server
-  // e.g. await api.put(`/families/${familyId}`, { ...setupStore.state })
-  // For now, just finish and clear.
-  
-  console.log('Group Setup Completed:', {
-      name: setupStore.groupName,
-      seniorId: setupStore.seniorId,
-      bloodType: setupStore.bloodType,
-      diseases: setupStore.diseases,
-      contacts: setupStore.contactSlots,
-      medications: setupStore.medications
-  })
-  
-  // Clear temporary store
-  setupStore.reset()
-  
-  router.push('/home')
+const complete = async () => {
+  try {
+    await setupStore.saveData(familyId)
+    alert('그룹 설정이 저장되었습니다.')
+    
+    // Clear temporary store
+    setupStore.reset()
+    router.push('/home')
+    
+  } catch (error) {
+    alert('저장에 실패했습니다. 메인으로 이동합니다.')
+    setupStore.reset()
+    router.push('/home')
+  }
 }
 </script>

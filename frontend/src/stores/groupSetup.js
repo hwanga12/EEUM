@@ -111,6 +111,48 @@ export const useGroupSetupStore = defineStore('groupSetup', () => {
         }
     }
 
+    const saveData = async (familyId) => {
+        try {
+            // 1. Construct Payload for Group Update
+            const priorities = []
+            contactSlots.value.forEach((member, index) => {
+                if (member) {
+                    priorities.push({
+                        userId: member.userId || member.id,
+                        emergencyPriority: index + 1
+                    })
+                }
+            })
+
+            const payload = {
+                newGroupName: groupName.value,
+                dependentUserId: seniorId.value,
+                dependentBloodType: bloodType.value,
+                dependentChronicDiseases: diseases.value,
+                memberPriorities: priorities
+            }
+
+            console.log('Sending Group Update Payload:', payload)
+
+            // 2. Call API
+            await api.put(`/families/${familyId}`, payload)
+            console.log('Group Update Success')
+
+            // 3. (Optional) Save Medications - Separately
+            if (medications.value.length > 0) {
+                // Medication logic implementation postponed/handled separately as per user instruction to "keep"
+                // Or implement basic mapping if user wants it now. 
+                // Given the specific instruction "keep this and fix group settings", I'll focus on the group update first.
+                // To prevent errors, I'll log that medication update is pending implementation here.
+                console.log('Medication update skipped for now (pending API integration)')
+            }
+
+        } catch (error) {
+            console.error('Failed to save group setup:', error)
+            throw error;
+        }
+    }
+
     return {
         isInitialized,
         currentFamilyId,
@@ -121,6 +163,7 @@ export const useGroupSetupStore = defineStore('groupSetup', () => {
         contactSlots,
         medications,
         initData,
+        saveData,
         reset
     }
 })

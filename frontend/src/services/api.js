@@ -49,4 +49,8 @@ export const joinFamilyWithCode = (inviteCode) => {
   });
 };
 
+export const logout = () => {
+  return apiClient.post('/auth/logout');
+};
+
 export default apiClient;

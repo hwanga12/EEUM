@@ -7,7 +7,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#e76f51",
+        primary: "var(--color-primary)",
+        "primary-light": "var(--color-primary-light)",
+        "primary-soft": "var(--color-primary-soft)",
+        "text-title": "var(--text-title)",
+        "text-body": "var(--text-body)",
+        "text-sub": "var(--text-sub)",
+        "border-default": "var(--border-default)",
+        "bg-page": "var(--bg-page)",
         primaryBg: "#FFF6EF",
         "background-light": "#FFFBF7",
         "background-dark": "#1A1614",

@@ -18,7 +18,7 @@ public class IotFallController {
     @Operation(summary = "낙상 이벤트 로그 URL 발급", description = "낙상 감지 시 영상 업로드를 위한 Presigned URL을 발급받습니다.")
     @PostMapping("/presigned-url")
     public RestApiResponse<Map<String, String>> getPresignedUrl(
-            @RequestParam Long groupId) {
+            @RequestParam Integer groupId) {
         Map<String, String> response = fallEventService.initiateFallLog(groupId);
         return RestApiResponse.success(org.springframework.http.HttpStatus.OK, "Presigned URL 발급 성공", response);
     }

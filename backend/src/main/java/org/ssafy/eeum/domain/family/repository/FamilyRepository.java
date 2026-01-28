@@ -6,7 +6,7 @@ import org.ssafy.eeum.domain.family.entity.Family;
 
 import java.util.Optional;
 
-public interface FamilyRepository extends JpaRepository<Family, Long> {
+public interface FamilyRepository extends JpaRepository<Family, Integer> {
     Optional<Family> findByInviteCode(String inviteCode);
 
     Optional<Family> findByUser(User user);

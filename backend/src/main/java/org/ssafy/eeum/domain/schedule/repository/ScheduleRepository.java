@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
         List<Schedule> findByFamilyIdAndStartAtLessThanEqualAndEndAtGreaterThanEqualAndDeletedAtIsNull(
-                        Long familyId, LocalDate endDate, LocalDate startDate);
+                        Integer familyId, LocalDate endDate, LocalDate startDate);
 
         /**
          * 특정 그룹의 일정 후보군 조회
@@ -28,7 +28,7 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
                         "  OR s.parentId IS NOT NULL " +
                         "  OR (s.startAt <= :endDate AND s.endAt >= :startDate)" +
                         ")")
-        List<Schedule> findCandidates(@Param("familyId") Long familyId,
+        List<Schedule> findCandidates(@Param("familyId") Integer familyId,
                         @Param("startDate") LocalDate startDate,
                         @Param("endDate") LocalDate endDate);
 

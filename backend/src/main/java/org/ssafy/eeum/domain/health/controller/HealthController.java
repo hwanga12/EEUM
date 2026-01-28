@@ -28,7 +28,7 @@ public class HealthController {
                         ErrorCode.ENTITY_NOT_FOUND, ErrorCode.INVALID_INPUT_VALUE, ErrorCode.INTERNAL_SERVER_ERROR })
         @PostMapping("/data")
         public RestApiResponse<String> uploadMetrics(
-                        @RequestParam Long groupId,
+                        @RequestParam Integer groupId,
                         @Valid @RequestBody List<HealthMetricRequestDTO> requests) {
 
                 healthService.saveHealthMetrics(groupId, requests);
@@ -39,7 +39,7 @@ public class HealthController {
                         ErrorCode.ENTITY_NOT_FOUND, ErrorCode.INVALID_INPUT_VALUE })
         @PostMapping("/connection")
         public RestApiResponse<HealthConnectionResponseDTO> registerConnection(
-                        @RequestParam Long groupId,
+                        @RequestParam Integer groupId,
                         @Valid @RequestBody HealthConnectionRequestDTO request) {
 
                 HealthConnectionResponseDTO response = healthConnectionService.registerConnection(groupId,
@@ -51,7 +51,7 @@ public class HealthController {
                         ErrorCode.ENTITY_NOT_FOUND })
         @GetMapping("/connection")
         public RestApiResponse<HealthConnectionResponseDTO> getConnectionStatus(
-                        @RequestParam Long groupId,
+                        @RequestParam Integer groupId,
                         @RequestParam(defaultValue = "SAMSUNG_HEALTH") String provider) {
 
                 HealthConnectionResponseDTO response = healthConnectionService.getConnectionStatus(groupId,

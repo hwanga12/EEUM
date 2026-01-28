@@ -48,7 +48,7 @@ public class IotDeviceService {
         return device.getId();
     }
 
-    public List<IotDeviceResponseDTO> getDevicesByGroup(Long groupId) {
+    public List<IotDeviceResponseDTO> getDevicesByGroup(Integer groupId) {
         return iotDeviceRepository.findAllByFamilyId(groupId).stream()
                 .map(IotDeviceResponseDTO::of)
                 .collect(Collectors.toList());

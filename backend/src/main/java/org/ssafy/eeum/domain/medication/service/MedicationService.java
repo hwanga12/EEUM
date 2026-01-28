@@ -59,4 +59,11 @@ public class MedicationService {
                 .map(MedicationResponse::from)
                 .collect(Collectors.toList());
     }
+
+    @Transactional
+    public void deleteMedicationPlan(Long medicationId) {
+        MedicationPlan medicationPlan = medicationRepository.findById(medicationId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 약 정보가 존재하지 않습니다. id=" + medicationId));
+        medicationRepository.delete(medicationPlan);
+    }
 }

@@ -81,6 +81,8 @@ public class AuthService {
         return String.valueOf((int)(Math.random() * 900000) + 100000);
     }
 
+    private static final String RT_PREFIX = "RT:";
+
     @Transactional
     public TokenDto login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
@@ -98,10 +100,20 @@ public class AuthService {
         String accessToken = jwtProvider.createAccessToken(user.getId(), user.getEmail(), "ROLE_USER");
         String refreshToken = jwtProvider.createRefreshToken(user.getId(), user.getEmail(), "ROLE_USER");
 
+        // Refresh Token Redis 저장 (7일)
+        redisTemplate.opsForValue().set(RT_PREFIX + user.getEmail(), refreshToken, 7, TimeUnit.DAYS);
+
         return TokenDto.builder()
                 .grantType("Bearer")
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .build();
+    }
+
+    @Transactional
+    public void logout(String email) {
+        if (redisTemplate.opsForValue().get(RT_PREFIX + email) != null) {
+            redisTemplate.delete(RT_PREFIX + email);
+        }
     }
 }

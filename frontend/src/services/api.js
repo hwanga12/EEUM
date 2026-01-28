@@ -16,8 +16,8 @@ apiClient.interceptors.request.use(
 
     if (token) {
       // 반드시 Bearer 뒤에 한 칸 공백이 있어야 합니다.
+      // 반드시 Bearer 뒤에 한 칸 공백이 있어야 합니다.
       config.headers.Authorization = `Bearer ${token}`;
-      console.log("요청 헤더에 토큰 부착 성공!");
     } else {
       console.log("localStorage에 토큰이 없습니다.");
     }

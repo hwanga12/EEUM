@@ -170,12 +170,14 @@
 import { ref, onMounted, watch, nextTick, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useUserStore } from '../stores/user';
+import { useFamilyStore } from '../stores/family';
 import { updateUserProfile } from '../services/api';
 import { useRouter, useRoute } from 'vue-router';
 
 const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
+const familyStore = useFamilyStore(); // Initialize familyStore
 const { profile: userProfile } = storeToRefs(userStore);
 
 const profile = ref({ name: '', phone: '', gender: 'M', address: '' });
@@ -340,9 +342,19 @@ const submitProfile = async () => {
     // 7. Pinia 스토어의 사용자 정보를 최신화 (홈 화면에서 바뀐 이름/사진을 바로 보여주기 위해)
     await userStore.fetchUser();
     
-    // 8. 홈(/)으로 이동
-    // router-link의 to="/"와 같은 목적지로 프로그래밍 방식으로 이동합니다.
-    router.push('/home');
+    if (isInitialSetup.value) {
+      router.push('/voice-sample');
+    } else {
+      // Redirect to Member Detail Page (e.g., /members/4/7)
+      const familyId = familyStore.selectedFamily?.id;
+      const userId = userStore.profile?.id;
+      
+      if (familyId && userId) {
+          router.push({ name: 'MemberDetail', params: { familyId, userId } });
+      } else {
+          router.push('/');
+      }
+    }
 
   } catch (error) {
     // 에러 발생 시 처리

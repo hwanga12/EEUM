@@ -31,6 +31,11 @@ const routes = [
     component: () => import('../views/SignupView.vue')
   },
   {
+    path: '/logout',
+    name: 'logout',
+    component: () => import('../views/LogoutView.vue')
+  },
+  {
     path: '/home',
     name: 'HomePage',
     component: HomePage,

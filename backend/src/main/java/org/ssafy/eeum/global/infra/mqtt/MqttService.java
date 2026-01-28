@@ -69,25 +69,41 @@ public class MqttService {
                 handleSentimentAnalysis(payload);
             } else if ("eeum/fall/response".equals(topic)) {
                 handleFallResponse(payload);
-            } else if ("eeum/device/init".equals(topic)) {
-                handleDeviceInit(payload);
+            } else if (topic != null && topic.startsWith("eeum/init/device/") && topic.endsWith("/req")) {
+                handleDeviceInit(payload, topic);
+            } else if ("eeum/device/init".equals(topic)) { // 하위 호환성 유지 (선택 사항)
+                handleDeviceInit(payload, topic);
             }
         } catch (Exception e) {
             log.error("Error handling MQTT message for topic {}: {}", topic, e.getMessage());
         }
     }
 
-    private void handleDeviceInit(String payload) {
+    private void handleDeviceInit(String payload, String topic) {
         String serialNumber = null;
         try {
             JsonNode node = objectMapper.readTree(payload);
 
-            if (!node.has("serial_number")) {
-                log.error("Invalid Device Init Payload: Missing serial_number");
+            // 토픽에서 SN 추출 시도 (eeum/init/device/{SN}/req)
+            if (topic != null && topic.contains("/")) {
+                String[] parts = topic.split("/");
+                if (parts.length >= 4) {
+                    serialNumber = parts[3];
+                }
+            }
+
+            // 토픽에 없으면 페이로드에서 확인
+            if (serialNumber == null || serialNumber.isEmpty()) {
+                if (node.has("serial_number")) {
+                    serialNumber = node.path("serial_number").asText();
+                }
+            }
+
+            if (serialNumber == null) {
+                log.error("Invalid Device Init Request: Could not resolve serial_number from topic or payload");
                 return;
             }
 
-            serialNumber = node.path("serial_number").asText();
             final String finalSerialNumber = serialNumber;
             List<IotDeviceMqttDTO> allDevicesInGroup = iotDeviceService.getDevicesBySerialNumber(finalSerialNumber);
 
@@ -96,30 +112,30 @@ public class MqttService {
                         org.ssafy.eeum.global.error.model.ErrorCode.IOT_DEVICE_GROUP_NOT_FOUND);
             }
 
-            // 요청한 기기 자신의 정보 찾기
+            // 요청한 기기 자신의 정보 찾기 (등록 여부 확인용)
             IotDeviceMqttDTO currentDevice = allDevicesInGroup.stream()
                     .filter(d -> d.getSerialNumber().equals(finalSerialNumber))
                     .findFirst()
-                    .orElse(allDevicesInGroup.get(0));
+                    .orElseThrow(() -> new org.ssafy.eeum.global.error.exception.CustomException(
+                            org.ssafy.eeum.global.error.model.ErrorCode.IOT_DEVICE_NOT_FOUND));
 
-            // 기기 전용 JWT 생성
-            String token = jwtProvider.createDeviceToken(finalSerialNumber);
+            // 기기 전용 JWT 생성 (groupId 포함)
+            String token = jwtProvider.createDeviceToken(finalSerialNumber, currentDevice.getGroupId());
 
+            // 응답 구성 (요청된 필드 위주 - groupId는 토큰에 포함되어 있으므로 제외)
             IotDeviceInitResponseDTO response = IotDeviceInitResponseDTO.builder()
                     .status("success")
                     .token(token)
-                    .groupId(currentDevice.getGroupId())
-                    .location(currentDevice.getLocationType())
-                    .serialNumber(finalSerialNumber)
-                    .devices(allDevicesInGroup)
+                    .devices(allDevicesInGroup) // 본인 포함하여 반환
                     .build();
 
             String responsePayload = objectMapper.writeValueAsString(response);
-            String responseTopic = String.format("eeum/device/init/res/%s", serialNumber);
+            // 변경된 응답 토픽: eeum/init/device/{serial}/res
+            String responseTopic = String.format("eeum/init/device/%s/res", finalSerialNumber);
 
             publish(responseTopic, responsePayload);
-            log.info("Sent Device Init Success Response via MQTT: Serial={}, Group={}", serialNumber,
-                    currentDevice.getGroupId());
+            log.info("Sent Device Init Success Response via MQTT: Serial={}, Group={}, DeviceCount={}",
+                    finalSerialNumber, currentDevice.getGroupId(), allDevicesInGroup.size());
 
         } catch (org.ssafy.eeum.global.error.exception.CustomException e) {
             log.error("Device Init failed - CustomException: {}, Serial={}", e.getErrorCode().getMessage(),
@@ -143,7 +159,9 @@ public class MqttService {
                     .serialNumber(serialNumber)
                     .build();
             String payload = objectMapper.writeValueAsString(errorResponse);
-            publish(String.format("eeum/device/init/res/%s", serialNumber), payload);
+            // 에러 응답도 새로운 토픽 형식 적용 가능
+            String errorTopic = String.format("eeum/init/device/%s/res", serialNumber);
+            publish(errorTopic, payload);
         } catch (Exception e) {
             log.error("Failed to send MQTT error response: {}", e.getMessage());
         }

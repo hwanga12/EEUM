@@ -24,7 +24,7 @@ public class ScheduleController {
         @SwaggerApiSpec(summary = "월간 일정 조회", description = "특정 연도/월의 모든 가족 일정을 조회합니다. 카테고리, 키워드, 대상자, 방문 여부로 필터링할 수 있습니다.", successMessage = "월간 일정 조회 성공")
         @GetMapping
         public RestApiResponse<List<ScheduleResponseDTO>> getMonthlySchedules(
-                        @PathVariable Long familyId,
+                        @PathVariable Integer familyId,
                         @RequestParam int year,
                         @RequestParam int month,
                         @RequestParam(required = false) String category,
@@ -41,7 +41,7 @@ public class ScheduleController {
                         ErrorCode.SCHEDULE_NOT_FOUND, ErrorCode.ENTITY_NOT_FOUND })
         @GetMapping("/{scheduleId}")
         public RestApiResponse<ScheduleResponseDTO> getSchedule(
-                        @PathVariable Long familyId,
+                        @PathVariable Integer familyId,
                         @PathVariable String scheduleId) {
                 return RestApiResponse.success(scheduleService.getSchedule(familyId, scheduleId));
         }
@@ -51,7 +51,7 @@ public class ScheduleController {
         @PostMapping
         public RestApiResponse<Void> createSchedule(
                         @AuthenticationPrincipal CustomUserDetails userDetails,
-                        @PathVariable Long familyId,
+                        @PathVariable Integer familyId,
                         @RequestBody ScheduleRequestDTO request) {
                 scheduleService.createSchedule(userDetails.getId(), familyId, request);
                 return RestApiResponse.success("일정이 성공적으로 등록되었습니다.");
@@ -63,7 +63,7 @@ public class ScheduleController {
         @PutMapping("/{scheduleId}")
         public RestApiResponse<Void> updateSchedule(
                         @AuthenticationPrincipal CustomUserDetails userDetails,
-                        @PathVariable Long familyId,
+                        @PathVariable Integer familyId,
                         @PathVariable String scheduleId,
                         @RequestBody ScheduleRequestDTO request) {
                 scheduleService.updateSchedule(userDetails.getId(), familyId, scheduleId, request);
@@ -75,7 +75,7 @@ public class ScheduleController {
         @DeleteMapping("/{scheduleId}")
         public RestApiResponse<Void> deleteSchedule(
                         @AuthenticationPrincipal CustomUserDetails userDetails,
-                        @PathVariable Long familyId,
+                        @PathVariable Integer familyId,
                         @PathVariable String scheduleId,
                         @RequestParam(value = "delete_all", required = false, defaultValue = "false") boolean deleteAll) {
                 scheduleService.deleteSchedule(userDetails.getId(), familyId, scheduleId, deleteAll);
@@ -87,7 +87,7 @@ public class ScheduleController {
         @PatchMapping("/{scheduleId}/visit")
         public RestApiResponse<Void> updateVisitStatus(
                         @AuthenticationPrincipal CustomUserDetails userDetails,
-                        @PathVariable Long familyId,
+                        @PathVariable Integer familyId,
                         @PathVariable String scheduleId,
                         @RequestParam boolean visited) {
                 scheduleService.updateVisitStatus(userDetails.getId(), familyId, scheduleId, visited);

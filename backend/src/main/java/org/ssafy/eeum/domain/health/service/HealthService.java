@@ -25,7 +25,7 @@ public class HealthService {
         private final MqttService mqttService;
 
         @Transactional
-        public void saveHealthMetrics(Long groupId, List<HealthMetricRequestDTO> requests) {
+        public void saveHealthMetrics(Integer groupId, List<HealthMetricRequestDTO> requests) {
                 Family family = familyRepository.findById(groupId)
                                 .orElseThrow(() -> new CustomException(ErrorCode.ENTITY_NOT_FOUND,
                                                 "가족 그룹을 찾을 수 없습니다."));

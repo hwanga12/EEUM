@@ -23,7 +23,7 @@ public class HealthConnectionService {
         private final FamilyRepository familyRepository;
 
         @Transactional
-        public HealthConnectionResponseDTO registerConnection(Long groupId,
+        public HealthConnectionResponseDTO registerConnection(Integer groupId,
                         HealthConnectionRequestDTO request) {
                 Family family = familyRepository.findById(groupId)
                                 .orElseThrow(() -> new CustomException(ErrorCode.ENTITY_NOT_FOUND,
@@ -53,7 +53,7 @@ public class HealthConnectionService {
                                 .build();
         }
 
-        public HealthConnectionResponseDTO getConnectionStatus(Long groupId, String provider) {
+        public HealthConnectionResponseDTO getConnectionStatus(Integer groupId, String provider) {
                 Family family = familyRepository.findById(groupId)
                                 .orElseThrow(() -> new CustomException(ErrorCode.ENTITY_NOT_FOUND,
                                                 "가족 그룹을 찾을 수 없습니다."));

@@ -10,7 +10,7 @@ import org.ssafy.eeum.domain.iot.entity.IotDevice;
 @AllArgsConstructor
 public class IotDeviceResponseDTO {
     private Integer id;
-    private Long groupId;
+    private Integer groupId;
     private String serialNumber;
     private String deviceName;
     private String locationType;

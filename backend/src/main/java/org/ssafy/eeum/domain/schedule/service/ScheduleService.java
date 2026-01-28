@@ -39,7 +39,7 @@ public class ScheduleService {
     private final RedisService redisService;
 
     // 월간 일정 조회 (캐시 적용)
-    public List<ScheduleResponseDTO> getMonthlySchedules(Long familyId, int year, int month, String category,
+    public List<ScheduleResponseDTO> getMonthlySchedules(Integer familyId, int year, int month, String category,
             String keyword, String targetPerson, Boolean isVisited) {
 
         YearMonth targetMonth = YearMonth.of(year, month);
@@ -66,7 +66,7 @@ public class ScheduleService {
         return result;
     }
 
-    public ScheduleResponseDTO getSchedule(Long familyId, String scheduleId) {
+    public ScheduleResponseDTO getSchedule(Integer familyId, String scheduleId) {
         if (scheduleId.contains("_")) {
             String[] parts = scheduleId.split("_");
             Integer parentId = Integer.parseInt(parts[0]);
@@ -105,7 +105,7 @@ public class ScheduleService {
     }
 
     // DB 데이터를 읽어 해당 월의 실제 날짜들로 확장
-    private List<ScheduleResponseDTO> calculateMonthlySchedules(Long familyId, YearMonth ym, String category,
+    private List<ScheduleResponseDTO> calculateMonthlySchedules(Integer familyId, YearMonth ym, String category,
             String keyword, String targetPerson, Boolean isVisited) {
         LocalDate start = ym.atDay(1);
         LocalDate end = ym.atEndOfMonth();
@@ -280,7 +280,7 @@ public class ScheduleService {
 
     // 일정 등록
     @Transactional
-    public void createSchedule(Integer userId, Long familyId, ScheduleRequestDTO dto) {
+    public void createSchedule(Integer userId, Integer familyId, ScheduleRequestDTO dto) {
         if (dto.getStartAt().isAfter(dto.getEndAt())) {
             throw new CustomException(ErrorCode.INVALID_DATE_RANGE);
         }
@@ -317,7 +317,7 @@ public class ScheduleService {
 
     // 일정 수정
     @Transactional
-    public void updateSchedule(Integer userId, Long familyId, String scheduleId, ScheduleRequestDTO dto) {
+    public void updateSchedule(Integer userId, Integer familyId, String scheduleId, ScheduleRequestDTO dto) {
         if (dto.getStartAt().isAfter(dto.getEndAt())) {
             throw new CustomException(ErrorCode.INVALID_DATE_RANGE);
         }
@@ -396,7 +396,7 @@ public class ScheduleService {
 
     // 일정 삭제
     @Transactional
-    public void deleteSchedule(Integer userId, Long familyId, String scheduleId, boolean deleteAll) {
+    public void deleteSchedule(Integer userId, Integer familyId, String scheduleId, boolean deleteAll) {
         ParsedScheduleId parsedId = parseScheduleId(scheduleId);
 
         if (deleteAll) {
@@ -439,7 +439,7 @@ public class ScheduleService {
 
     // 방문 상태 변경
     @Transactional
-    public void updateVisitStatus(Integer userId, Long familyId, String scheduleId, boolean visited) {
+    public void updateVisitStatus(Integer userId, Integer familyId, String scheduleId, boolean visited) {
         ParsedScheduleId parsedId = parseScheduleId(scheduleId);
 
         User user = userRepository.findById(userId)
@@ -473,12 +473,12 @@ public class ScheduleService {
         }
     }
 
-    public void invalidateCache(Long familyId, LocalDate date) {
+    public void invalidateCache(Integer familyId, LocalDate date) {
         String key = "family:" + familyId + ":schedule:" + YearMonth.from(date);
         redisService.deleteData(key);
     }
 
-    public Schedule createAndSaveExclusion(User creator, Long familyId, Schedule parent, LocalDate targetDate) {
+    public Schedule createAndSaveExclusion(User creator, Integer familyId, Schedule parent, LocalDate targetDate) {
 
         Family family = familyRepository.findById(familyId)
                 .orElseThrow(() -> new CustomException(ErrorCode.ENTITY_NOT_FOUND));
@@ -497,7 +497,7 @@ public class ScheduleService {
         return exclusion;
     }
 
-    private void createIndependentSchedule(User creator, Long familyId, Schedule source, LocalDate targetDate,
+    private void createIndependentSchedule(User creator, Integer familyId, Schedule source, LocalDate targetDate,
             boolean visited) {
 
         Family family = familyRepository.findById(familyId)

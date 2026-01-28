@@ -28,7 +28,7 @@ public class FallEventService {
     private final GmsService gmsService;
 
     @Transactional
-    public java.util.Map<String, String> initiateFallLog(Long familyId) {
+    public java.util.Map<String, String> initiateFallLog(Integer familyId) {
         String fileName = "fall/" + familyId + "/" + UUID.randomUUID() + ".mp4";
 
         Family family = familyRepository.findById(familyId)
@@ -62,7 +62,7 @@ public class FallEventService {
     }
 
     @Transactional
-    public void handleVoiceResponse(Long familyId, String sttContent) {
+    public void handleVoiceResponse(Integer familyId, String sttContent) {
         // 해당 그룹에서 가장 최근에 발생한 '분석 중'인 이벤트를 찾음
         FallEvent event = fallEventRepository.findTopByFamilyIdAndStatusTypeOrderByCreatedAtDesc(
                 familyId, FallEvent.StatusType.UNDER_REVIEW)

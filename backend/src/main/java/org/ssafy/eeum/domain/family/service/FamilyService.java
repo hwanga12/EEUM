@@ -77,7 +77,7 @@ public class FamilyService {
         }
 
         @Transactional(readOnly = true)
-        public List<FamilyMemberDto> getFamilyMembers(String userId, Long familyId) {
+        public List<FamilyMemberDto> getFamilyMembers(String userId, Integer familyId) {
                 User user = userRepository.findById(Integer.parseInt(userId))
                                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
                 Family family = familyRepository.findById(familyId)
@@ -102,7 +102,7 @@ public class FamilyService {
         }
 
         @Transactional(readOnly = true)
-        public FamilyMemberDetailResponseDto getFamilyMemberDetails(String userId, Long familyId,
+        public FamilyMemberDetailResponseDto getFamilyMemberDetails(String userId, Integer familyId,
                         Integer memberUserId) {
                 User user = userRepository.findById(Integer.parseInt(userId))
                                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -126,7 +126,7 @@ public class FamilyService {
         }
 
         @Transactional(readOnly = true)
-        public FamilyDetailResponseDto getFamilyDetails(Long familyId) {
+        public FamilyDetailResponseDto getFamilyDetails(Integer familyId) {
                 Family family = familyRepository.findById(familyId)
                                 .orElseThrow(() -> new CustomException(ErrorCode.FAMILY_NOT_FOUND));
 
@@ -210,7 +210,7 @@ public class FamilyService {
         }
 
         @Transactional
-        public LeaveFamilyResponseDto leaveFamily(String userId, Long familyId) {
+        public LeaveFamilyResponseDto leaveFamily(String userId, Integer familyId) {
                 User user = userRepository.findById(Integer.parseInt(userId))
                                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
                 Family family = familyRepository.findById(familyId)
@@ -241,7 +241,7 @@ public class FamilyService {
         }
 
         @Transactional
-        public UpdateFamilyResponseDto updateFamily(String authenticatedUserId, Long familyId,
+        public UpdateFamilyResponseDto updateFamily(String authenticatedUserId, Integer familyId,
                         UpdateFamilyRequestDto requestDto) {
                 User authenticatedUser = userRepository.findById(Integer.parseInt(authenticatedUserId))
                                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -328,7 +328,7 @@ public class FamilyService {
         }
 
         @Transactional(readOnly = true)
-        public String getInviteCode(String authenticatedUserId, Long familyId) {
+        public String getInviteCode(String authenticatedUserId, Integer familyId) {
                 User authenticatedUser = userRepository.findById(Integer.parseInt(authenticatedUserId))
                                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
                 Family family = familyRepository.findById(familyId)
@@ -342,7 +342,7 @@ public class FamilyService {
         }
 
         @Transactional
-        public String regenerateInviteCode(String authenticatedUserId, Long familyId) {
+        public String regenerateInviteCode(String authenticatedUserId, Integer familyId) {
                 User authenticatedUser = userRepository.findById(Integer.parseInt(authenticatedUserId))
                                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
                 Family family = familyRepository.findById(familyId)
@@ -365,7 +365,7 @@ public class FamilyService {
         }
 
         @Transactional
-        public void deleteFamilyMember(String authenticatedUserId, Long familyId, Integer memberUserId) {
+        public void deleteFamilyMember(String authenticatedUserId, Integer familyId, Integer memberUserId) {
                 User authenticatedUser = userRepository.findById(Integer.parseInt(authenticatedUserId))
                                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
                 Family family = familyRepository.findById(familyId)
@@ -420,7 +420,7 @@ public class FamilyService {
         }
 
         @Transactional
-        public void updateMyRelationship(String authenticatedUserId, Long familyId,
+        public void updateMyRelationship(String authenticatedUserId, Integer familyId,
                         UpdateMemberRelationshipRequestDto requestDto) {
                 User authenticatedUser = userRepository.findById(Integer.parseInt(authenticatedUserId))
                                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));

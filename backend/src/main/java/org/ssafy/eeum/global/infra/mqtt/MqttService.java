@@ -39,7 +39,7 @@ public class MqttService {
         }
     }
 
-    public void sendToIot(Long groupId, String category, String jsonPayload) {
+    public void sendToIot(Integer groupId, String category, String jsonPayload) {
         // 사용 형식 : eeum/group/{groupId}/{category}
         String topic = String.format("eeum/group/%d/%s", groupId, category);
         publish(topic, jsonPayload);
@@ -91,7 +91,7 @@ public class MqttService {
                 return;
             }
 
-            Long groupId = devices.get(0).getGroupId();
+            Integer groupId = devices.get(0).getGroupId();
             String responsePayload = objectMapper.writeValueAsString(devices);
 
             sendToIot(groupId, "device-list", responsePayload);
@@ -111,7 +111,7 @@ public class MqttService {
                 return;
             }
 
-            Long groupId = node.path("group_id").asLong();
+            Integer groupId = node.path("group_id").asInt();
             String sttContent = node.path("stt_content").asText();
 
             fallEventService.handleVoiceResponse(groupId, sttContent);

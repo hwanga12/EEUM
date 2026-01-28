@@ -7,5 +7,5 @@ import java.util.Optional;
 
 public interface HealthConnectionRepository extends JpaRepository<HealthConnection, Integer> {
 
-    Optional<HealthConnection> findByFamilyIdAndProvider(Long familyId, String provider);
+    Optional<HealthConnection> findByFamilyIdAndProvider(Integer familyId, String provider);
 }

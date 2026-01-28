@@ -11,7 +11,7 @@ import java.util.List;
 @Schema(description = "가족 상세 조회 응답 DTO")
 public class FamilyDetailResponseDto {
     @Schema(description = "가족 ID")
-    private Long familyId;
+    private Integer familyId;
 
     @Schema(description = "가족 이름")
     private String groupName;

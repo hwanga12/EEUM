@@ -43,4 +43,13 @@ public class MedicationController {
         List<MedicationResponse> responses = medicationService.getMedicationPlansByGroupId(familyId);
         return ResponseEntity.ok(responses);
     }
+
+    @Operation(summary = "복약 정보 삭제", description = "ID로 복약 정보를 삭제합니다.")
+    @DeleteMapping("/{medicationId}")
+    public ResponseEntity<Void> deleteMedicationPlan(
+            @PathVariable Long familyId,
+            @PathVariable Long medicationId) {
+        medicationService.deleteMedicationPlan(medicationId);
+        return ResponseEntity.noContent().build();
+    }
 }

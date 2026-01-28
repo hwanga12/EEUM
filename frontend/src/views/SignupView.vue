@@ -157,7 +157,7 @@ const sendCode = async () => {
   errorMessage.value = '';
 
   try {
-    await apiClient.post('/auth/email/code', { email: form.email });
+    await apiClient.post('/auth/email/code', { email: form.email }, { withCredentials: false });
     isCodeSent.value = true;
     alert('인증 코드가 전송되었습니다. 이메일을 확인해주세요.');
   } catch (e) {
@@ -178,7 +178,7 @@ const verifyCode = async () => {
   errorMessage.value = '';
 
   try {
-    await apiClient.post('/auth/email/verify', { email: form.email, code: form.code });
+    await apiClient.post('/auth/email/verify', { email: form.email, code: form.code }, { withCredentials: false });
     isEmailVerified.value = true;
   } catch (e) {
     errorMessage.value = e.response?.data?.message || '인증번호가 올바르지 않습니다.';
@@ -221,7 +221,7 @@ const handleSignup = async () => {
       email: form.email,
       password: form.password,
       name: form.name
-    });
+    }, { withCredentials: false });
     
     alert('회원가입이 완료되었습니다. 로그인해주세요.');
     router.push('/login');

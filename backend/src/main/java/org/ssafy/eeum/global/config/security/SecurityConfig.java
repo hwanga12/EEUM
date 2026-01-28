@@ -60,7 +60,12 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers("/", "/api/auth/**", "/login/**", "/oauth2/**")
                                                 .permitAll()
-                                                .requestMatchers("/api/v1/iot/falls/detection").hasRole("DEVICE")
+                                                // IoT 인증 API - 토큰 불필요
+                                                .requestMatchers("/api/iot/auth/**")
+                                                .permitAll()
+                                                // IoT 기기 전용 API - ROLE_DEVICE 필수
+                                                .requestMatchers("/api/iot/device/**")
+                                                .hasRole("DEVICE")
                                                 .anyRequest().authenticated())
                                 .exceptionHandling(exception -> exception
                                                 .defaultAuthenticationEntryPointFor(

@@ -33,6 +33,15 @@ public class AuthController {
         return ResponseEntity.ok(tokenDto);
     }
 
+    @Operation(summary = "로그아웃", description = "로그아웃을 진행하고 서버에서 리프레시 토큰을 삭제합니다.")
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(@org.springframework.security.core.annotation.AuthenticationPrincipal org.ssafy.eeum.global.auth.model.CustomUserDetails userDetails) {
+        if (userDetails != null) {
+            authService.logout(userDetails.getEmail());
+        }
+        return ResponseEntity.ok("로그아웃 되었습니다.");
+    }
+
     @Operation(summary = "인증 코드 전송", description = "입력한 이메일로 인증 코드를 전송합니다.")
     @PostMapping("/email/code")
     public ResponseEntity<String> sendCode(@Valid @RequestBody org.ssafy.eeum.domain.auth.dto.request.EmailRequest request) {

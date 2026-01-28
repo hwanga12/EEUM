@@ -66,4 +66,26 @@ public class MedicationPlan extends BaseEntity {
         this.medicationPlanTimes.add(medicationPlanTime);
         medicationPlanTime.setMedicationPlan(this);
     }
+    
+    // Convenience method for Service
+    public void addNotificationTime(java.time.LocalTime time) {
+        MedicationPlanTime planTime = MedicationPlanTime.builder()
+                .notificationTime(time)
+                .build();
+        addMedicationPlanTime(planTime);
+    }
+
+    public void update(String medicineName, CycleType cycleType, String cycleValue, int daysOfWeek, int totalDosesDay, LocalDate startDate, LocalDate endDate) {
+        this.medicineName = medicineName;
+        this.cycleType = cycleType;
+        this.cycleValue = cycleValue;
+        this.daysOfWeek = daysOfWeek;
+        this.totalDosesDay = totalDosesDay;
+        this.startDate = startDate;
+        this.endDate = endDate;
+    }
+    
+    public List<org.ssafy.eeum.domain.medication.entity.MedicationPlanTime> getNotificationTimes() {
+        return this.medicationPlanTimes;
+    }
 }

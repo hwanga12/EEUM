@@ -52,4 +52,14 @@ public class MedicationController {
         medicationService.deleteMedicationPlan(medicationId);
         return ResponseEntity.noContent().build();
     }
+
+    @Operation(summary = "복약 정보 수정", description = "ID로 복약 정보를 수정합니다.")
+    @PutMapping("/{medicationId}")
+    public ResponseEntity<Void> updateMedicationPlan(
+            @PathVariable Long familyId,
+            @PathVariable Long medicationId,
+            @RequestBody MedicationRequest request) {
+        medicationService.updateMedicationPlan(medicationId, request);
+        return ResponseEntity.ok().build();
+    }
 }

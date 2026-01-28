@@ -66,4 +66,27 @@ public class MedicationService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 약 정보가 존재하지 않습니다. id=" + medicationId));
         medicationRepository.delete(medicationPlan);
     }
+
+    @Transactional
+    public void updateMedicationPlan(Long medicationId, MedicationRequest request) {
+        MedicationPlan medicationPlan = medicationRepository.findById(medicationId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 약 정보가 존재하지 않습니다. id=" + medicationId));
+
+        // Update fields
+        medicationPlan.update(
+            request.getMedicineName(),
+            request.getCycleType(),
+            request.getCycleValue(),
+            request.getDaysOfWeek(),
+            request.getTotalDosesDay(),
+            request.getStartDate(),
+            request.getEndDate()
+        );
+        
+        // Update Times (Clear and Re-add)
+        medicationPlan.getNotificationTimes().clear();
+        for (java.time.LocalTime time : request.getNotificationTimes()) {
+            medicationPlan.addNotificationTime(time);
+        }
+    }
 }

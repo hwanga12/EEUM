@@ -5,8 +5,7 @@ import VoiceRegistration from '../views/VoiceRegistration.vue';
 import EmergencyAlert from '../views/EmergencyAlert.vue';
 import MyProfileEdit from '../views/MyProfileEdit.vue';
 import VoiceSample from '../views/VoiceSample.vue';
-import LoginView from '../views/Login.vue'; 
-import HomePage from '../views/HomePage.vue';
+import LoginView from '../views/Login.vue';
 import MemberDetailView from '../views/MemberDetailView.vue';
 import JoinGroupView from '../views/JoinGroupView.vue';
 import GroupSetupLayout from '../views/group-setup/GroupSetupLayout.vue';
@@ -25,7 +24,7 @@ const routes = [
   {
     path: '/login',
     name: 'login', // 소문자 login으로 통일
-    component: LoginView 
+    component: LoginView
   },
   {
     path: '/home',
@@ -89,7 +88,7 @@ const routes = [
       sessionStorage.setItem('redirectAfterLogin', to.fullPath);
       try {
         await userStore.fetchUser();
-        if (userStore.isAuthenticated) { next(); } 
+        if (userStore.isAuthenticated) { next(); }
         else { next({ name: 'login' }); }
       } catch (e) { next({ name: 'login' }); }
     },
@@ -98,16 +97,6 @@ const routes = [
     path: '/voice-sample',
     name: 'VoiceSample',
     component: VoiceSample,
-  },
-  {
-    path: '/voice-sample',
-    name: 'VoiceSample',
-    component: VoiceSample,
-  },
-  {
-    path: '/home',
-    name: 'HomePage',
-    component: HomePage,
   },
   {
     path: '/voice-register',

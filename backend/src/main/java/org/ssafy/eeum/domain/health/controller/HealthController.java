@@ -17,7 +17,7 @@ import java.util.List;
 
 @Tag(name = "Health", description = "건강 데이터 관리 API")
 @RestController
-@RequestMapping("/api/v1/health")
+@RequestMapping("/api/health")
 @RequiredArgsConstructor
 public class HealthController {
 

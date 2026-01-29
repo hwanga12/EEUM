@@ -26,9 +26,8 @@ public class FirebaseConfig {
             }
         }
 
-        InputStream serviceAccount = new FileInputStream("src/main/resources/serviceAccountKey.json");
-        // 배포 환경(JAR) 고려 시:
-        // InputStream serviceAccount = getClass().getResourceAsStream("/serviceAccountKey.json");
+
+        InputStream serviceAccount = getClass().getResourceAsStream("/serviceAccountKey.json");
 
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))

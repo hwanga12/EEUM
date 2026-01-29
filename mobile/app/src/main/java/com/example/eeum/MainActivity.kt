@@ -37,6 +37,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var healthManager: SamsungHealthManager // 브릿지 주입
     // FCM 토큰 저장 변수
     private var fcmToken: String = ""
+    // 알림 ID 저장 변수
+    private var pendingNotificationId: String? = null
 
     // 파일 업로드 콜백
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
@@ -49,8 +51,21 @@ class MainActivity : ComponentActivity() {
         filePathCallback = null
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val notiId = intent.getStringExtra("notificationId")
+        if (notiId != null) {
+            pendingNotificationId = notiId
+            Log.d("FCM", "onNewIntent: Received Notification ID: $notiId")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        pendingNotificationId = intent.getStringExtra("notificationId")
+        Log.d("FCM", "onCreate: Pending Notification ID: $pendingNotificationId")
 
         Log.d("SHD_DEBUG", "앱이 시작되었습니다!")
         healthManager = SamsungHealthManager(this) // 매니저 초기화
@@ -73,6 +88,11 @@ class MainActivity : ComponentActivity() {
                     activity = this,
                     healthManager = healthManager,
                     tokenProvider = { fcmToken }, // 토큰 제공 람다 전달
+                    notificationIdProvider = { 
+                        val id = pendingNotificationId
+                        pendingNotificationId = null // Consume it
+                        id
+                    },
                     onShowFileChooser = { callback ->
                         filePathCallback = callback
                         fileChooserLauncher.launch("image/*")
@@ -94,7 +114,8 @@ class MainActivity : ComponentActivity() {
 class HealthJsBridge(
     private val activity: ComponentActivity,
     private val healthManager: SamsungHealthManager,
-    private val tokenProvider: () -> String // 토큰 제공자 추가
+    private val tokenProvider: () -> String, // 토큰 제공자 추가
+    private val notificationIdProvider: () -> String? // 알림 ID 제공자 추가
 ) {
     // SharedPreferences 초기화
     private val prefs = activity.getSharedPreferences("auth_prefs", android.content.Context.MODE_PRIVATE)
@@ -111,6 +132,13 @@ class HealthJsBridge(
     @JavascriptInterface
     fun getFcmToken(): String {
         return tokenProvider()
+    }
+
+    @JavascriptInterface
+    fun consumeNotificationId(): String? {
+        val id = notificationIdProvider()
+        Log.d("BRIDGE", "Consumed Notification ID: $id")
+        return id
     }
 
     // 네이티브에 토큰 저장
@@ -138,6 +166,7 @@ fun WebViewScreen(
     activity: ComponentActivity,
     healthManager: SamsungHealthManager,
     tokenProvider: () -> String,
+    notificationIdProvider: () -> String?,
     onShowFileChooser: (ValueCallback<Array<Uri>>) -> Unit
 ) {
     AndroidView(
@@ -165,7 +194,7 @@ fun WebViewScreen(
 
                 // JS 브릿지 연결 (JavascriptInterface import/의도 보존)
                 addJavascriptInterface(
-                    HealthJsBridge(activity, healthManager, tokenProvider),
+                    HealthJsBridge(activity, healthManager, tokenProvider, notificationIdProvider),
                     "AndroidBridge"
                 )
 

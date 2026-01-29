@@ -83,8 +83,17 @@ public class MqttConfig {
         String uniqueInboundId = clientId + "-in-" + UUID.randomUUID().toString().substring(0, 5);
 
         Mqttv5PahoMessageDrivenChannelAdapter adapter = new Mqttv5PahoMessageDrivenChannelAdapter(
-                mqttConnectionOptions, uniqueInboundId, "eeum/sensor/data", "eeum/ai/sentiment", "eeum/family/code",
-                "eeum/init/device/+/req", "eeum/fall/response", "eeum/init/device/pair/req");
+                mqttConnectionOptions, uniqueInboundId,
+                "eeum/sensor/data",
+                "eeum/ai/sentiment",
+                "eeum/family/code",
+                "eeum/init/device/+/req",
+                "eeum/fall/response",
+                "eeum/init/device/pair/req",
+                "eeum/response",
+                "eeum/event",
+                "eeum/update",
+                "eeum/status");
 
         adapter.setCompletionTimeout(5000);
         adapter.setQos(1);

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import ssl
 import time
@@ -61,6 +62,7 @@ class MqttClient:
     def __init__(
             self,
             inbound_queue: "Queue[Tuple[str, Dict[str, Any]]]",
+            loop: asyncio.AbstractEventLoop,
             broker:str = SERVER_HOST,
             port:int = SERVER_PORT,
             username:str = USERNAME,
@@ -79,6 +81,7 @@ class MqttClient:
         self.port = port
         self.subscribe_topics = subscribe_topics or list(SUB_TOPICS)
         self.inbound_queue = inbound_queue
+        self.loop = loop
         self.keepalive = keepalive
         self.token = token
         self.status_topic = status_topic.rstrip("/")
@@ -141,15 +144,15 @@ class MqttClient:
             self._started = True
 
     def deactivate(self) -> None:
-        """연결 종료(정상 disconnect → LWT 발동 안 함)"""
         self._active = False
         if self._started:
-            self.client.loop_stop()
+            try:
+                self.client.disconnect()
+            except Exception:
+                pass
+            # loop_stop은 disconnect 이후
+            self.client.loop_stop(force=True)  # 필요시 force=True 고려
             self._started = False
-        try:
-            self.client.disconnect()
-        except Exception:
-            pass
 
     def publish_json(self, topic: str, payload: Dict[str, Any], qos: int = 1, retain: bool = False) -> str:
         """msg_id 없으면 자동 생성해서 publish"""
@@ -231,6 +234,8 @@ class MqttClient:
         print("[mqtt] disconnected:", reason_code)
 
     def _on_message(self, client, userdata, msg):
+        if not self.loop.is_running():
+            return
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
         except Exception as e:
@@ -243,5 +248,9 @@ class MqttClient:
             if msg_id and self.dedupe.seen(msg_id):
                 print("[mqtt] duplicate drop:", msg_id, "topic:", msg.topic)
                 return
-
-        self.inbound_queue.put((msg.topic, payload))
+ 
+        item = (msg.topic, payload)
+        try:
+            self.loop.call_soon_threadsafe(self.inbound_queue.put_nowait, item)
+        except Exception as e:
+            print("[mqtt] enqueue failed:", e)

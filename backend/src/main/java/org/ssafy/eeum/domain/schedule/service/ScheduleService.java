@@ -116,7 +116,11 @@ public class ScheduleService {
         LocalDate start = ym.atDay(1);
         LocalDate end = ym.atEndOfMonth();
 
-        List<Schedule> candidates = scheduleRepository.findCandidates(familyId, start, end);
+        // LocalDate를 LocalDateTime으로 변환 (하루의 시작과 끝)
+        LocalDateTime startDateTime = start.atStartOfDay();
+        LocalDateTime endDateTime = end.atTime(LocalTime.MAX);
+
+        List<Schedule> candidates = scheduleRepository.findCandidates(familyId, startDateTime, endDateTime);
 
         // 1차 필터링: 부모 레벨에서 가능한 필터 적용 (카테고리, 제목/내용 등)
         // 반복 일정의 경우 원본이 매칭되면 자식도 매칭되는 것으로 간주
@@ -153,11 +157,7 @@ public class ScheduleService {
                     .toList();
         }
 
-        Set<String> modifiedMask = scheduleRepository.findCandidates(familyId, start, end).stream() // 전체에서 mask 계산해야 함?
-                // 주의: 필터링 된 candidates만으로 mask를 계산하면,
-                // 수정된 일정이 필터에 걸리지 않아 제외되었을 때, 원본 일정(반복)이 살아나는 문제가 발생할 수 있음.
-                // 따라서 mask 계산용 candidates는 필터링 전 전체 목록을 사용하거나, 별도로 로직 구성 필요.
-                // 안전하게: 마스킹 데이터는 전체 범위에서 조회하여 확보.
+        Set<String> modifiedMask = scheduleRepository.findCandidates(familyId, startDateTime, endDateTime).stream()
                 .filter(s -> s.getParentId() != null)
                 .map(s -> s.getParentId() + "_" + s.getStartAt())
                 .collect(Collectors.toSet());

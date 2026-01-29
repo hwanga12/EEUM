@@ -8,16 +8,22 @@ import org.springframework.integration.mqtt.support.MqttHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.ssafy.eeum.domain.iot.service.SensorEventService;
 import org.ssafy.eeum.domain.iot.service.DeviceStatusService;
 import org.ssafy.eeum.domain.iot.event.IotDeviceEvent;
 import org.ssafy.eeum.global.auth.jwt.JwtProvider;
 import org.springframework.context.event.EventListener;
+import org.ssafy.eeum.global.auth.model.DeviceDetails;
+import org.ssafy.eeum.global.error.exception.CustomException;
+import org.ssafy.eeum.global.error.model.ErrorCode;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -74,6 +80,8 @@ public class MqttService {
                 handleEvent(payload);
             } else if ("eeum/update".equals(topic)) {
                 handleUpdate(payload);
+            } else if ("eeum/status".equals(topic)) {
+                handleStatus(payload);
             }
         } catch (Exception e) {
             log.error("Error handling MQTT message for topic {}: {}", topic, e.getMessage());
@@ -111,15 +119,23 @@ public class MqttService {
             String token = getTokenFromNode(node);
             Integer groupId = validateTokenAndGetGroupId(token);
 
-            String deviceEventId = node.path("id").asText();
+            String msgId = node.path("msg_id").asText();
             String serialNumber = node.path("serial_number").asText();
             String sttContent = node.path("stt_content").asText();
+            double detectedAtTimestamp = node.path("detected_at").asDouble();
 
-            // 이벤트 ID로 센서 이벤트 조회 후 FallEvent 업데이트
-            sensorEventService.linkVoiceResponseToEvent(serialNumber, deviceEventId, sttContent);
+            LocalDateTime detectedAt = convertTimestamp(detectedAtTimestamp);
 
-            log.info("Handled Voice Response: Family={}, SN={}, EventId={}, Content={}",
-                    groupId, serialNumber, deviceEventId, sttContent);
+            // 기존 로직: 이벤트 ID로 센서 이벤트 조회 후 FallEvent 업데이트
+            // Note: 기존 코드에서는 "id" 필드를 사용했으나, 새 명세에는 없음
+            // 필요시 별도 필드로 전달되어야 함
+            String deviceEventId = node.path("id").asText(); // 하위 호환성 유지
+            if (!deviceEventId.isEmpty()) {
+                sensorEventService.linkVoiceResponseToEvent(serialNumber, deviceEventId, sttContent);
+            }
+
+            log.info("Handled Voice Response: MsgId={}, Family={}, SN={}, DetectedAt={}, Content={}",
+                    msgId, groupId, serialNumber, detectedAt, sttContent);
         } catch (Exception e) {
             log.warn("Failed to handle response: {}", e.getMessage());
         }
@@ -131,10 +147,9 @@ public class MqttService {
             String token = getTokenFromNode(node);
             Integer groupId = validateTokenAndGetGroupId(token);
 
+            String msgId = node.path("msg_id").asText();
             String kind = node.path("kind").asText();
-            String deviceEventId = node.path("id").asText();
             String serialNumber = node.path("serial_number").asText();
-            String location = node.path("location").asText();
             String eventType = node.path("event").asText();
             double startedAtTimestamp = node.path("started_at").asDouble();
             double detectedAtTimestamp = node.path("detected_at").asDouble();
@@ -142,13 +157,17 @@ public class MqttService {
             LocalDateTime startedAt = convertTimestamp(startedAtTimestamp);
             LocalDateTime detectedAt = convertTimestamp(detectedAtTimestamp);
 
+            // 기존 로직과의 호환성을 위해 location 필드 유지 (선택적)
+            String location = node.path("location").asText();
+
             // 센서 이벤트 저장 (중복 방지 포함)
+            // Note: 기존에는 "id" 필드를 deviceEventId로 사용했으나, 새 명세에서는 msg_id 사용
             sensorEventService.handleSensorEvent(
-                    groupId, deviceEventId, serialNumber, kind, eventType,
+                    groupId, msgId, serialNumber, kind, eventType,
                     location, startedAt, detectedAt, payload);
 
-            log.info("Handled Sensor Event: eventId={}, type={}, serial={}",
-                    deviceEventId, eventType, serialNumber);
+            log.info("Handled Sensor Event: MsgId={}, Kind={}, Event={}, SN={}, DetectedAt={}",
+                    msgId, kind, eventType, serialNumber, detectedAt);
         } catch (Exception e) {
             log.warn("Failed to handle event: {}", e.getMessage());
         }
@@ -160,18 +179,88 @@ public class MqttService {
                 .toLocalDateTime();
     }
 
+    private void handleStatus(String payload) {
+        try {
+            JsonNode node = objectMapper.readTree(payload);
+            String token = getTokenFromNode(node);
+            Integer groupId = validateTokenAndGetGroupId(token);
+
+            String msgId = node.path("msg_id").asText();
+            String serialNumber = node.path("serial_number").asText();
+            String status = node.path("status").asText();
+            double detectedAtTimestamp = node.path("detected_at").asDouble();
+
+            LocalDateTime detectedAt = convertTimestamp(detectedAtTimestamp);
+
+            if ("online".equals(status)) {
+                JsonNode linkArray = node.path("link");
+                if (linkArray.isArray()) {
+                    for (JsonNode linkNode : linkArray) {
+                        String slaveSerial = linkNode.path("id").asText();
+                        boolean alive = linkNode.path("alive").asBoolean();
+
+                        // DB에 상태 저장
+                        deviceStatusService.updateDeviceStatus(
+                                groupId, serialNumber, slaveSerial, alive);
+                    }
+                }
+                log.info("Handled Device Status (Online): MsgId={}, Family={}, SN={}, DetectedAt={}",
+                        msgId, groupId, serialNumber, detectedAt);
+            } else if ("offline".equals(status)) {
+                deviceStatusService.markDeviceOffline(groupId, serialNumber);
+                log.info("Handled Device Status (Offline): MsgId={}, Family={}, SN={}, DetectedAt={}",
+                        msgId, groupId, serialNumber, detectedAt);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to handle status: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Server -> IoT 업데이트 알림 전송
+     * 
+     * @param deviceId  디바이스 시리얼 번호
+     * @param kind      업데이트 종류 (image/voice/text/schedule)
+     * @param updateCnt 업데이트 카운트
+     */
+    public void sendDeviceUpdateNotification(String deviceId, String kind, Integer updateCnt) {
+        try {
+            String topic = String.format("eeum/device/%s/update", deviceId);
+
+            String msgId = java.util.UUID.randomUUID().toString();
+            double sentAt = System.currentTimeMillis() / 1000.0;
+
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("msg_id", msgId);
+            payload.put("kind", kind);
+            payload.put("update_cnt", updateCnt);
+            payload.put("sent_at", sentAt);
+
+            String jsonPayload = objectMapper.writeValueAsString(payload);
+            publish(topic, jsonPayload);
+
+            log.info("Sent Device Update Notification: MsgId={}, DeviceId={}, Kind={}, Count={}",
+                    msgId, deviceId, kind, updateCnt);
+        } catch (Exception e) {
+            log.error("Failed to send Device Update Notification: {}", e.getMessage());
+        }
+    }
+
     private void handleUpdate(String payload) {
         try {
             JsonNode node = objectMapper.readTree(payload);
             String token = getTokenFromNode(node);
             Integer groupId = validateTokenAndGetGroupId(token);
 
+            String msgId = node.path("msg_id").asText();
             String kind = node.path("kind").asText();
-            String id = node.path("id").asText();
             int updateCnt = node.path("update_cnt").asInt();
+            double updatedAtTimestamp = node.path("updated_at").asDouble();
 
-            log.info("Handled Update Acknowledgement from IoT: Family={}, Kind={}, Count={}, TargetId={}",
-                    groupId, kind, updateCnt, id);
+            LocalDateTime updatedAt = convertTimestamp(updatedAtTimestamp);
+
+            log.info("Handled Update Acknowledgement from IoT: MsgId={}, Family={}, Kind={}, Count={}, UpdatedAt={}",
+                    msgId, groupId, kind, updateCnt, updatedAt);
         } catch (Exception e) {
             log.warn("Failed to handle IoT update acknowledgement: {}", e.getMessage());
         }
@@ -183,7 +272,7 @@ public class MqttService {
             String topic = String.format("eeum/device/%s/sync", event.getSerialNumber());
             String type = event.getType();
 
-            java.util.Map<String, String> payload = new java.util.HashMap<>();
+            Map<String, String> payload = new HashMap<>();
             payload.put("type", type.equals("UPDATE") ? "LOCATION_UPDATE" : "DEVICE_DELETE");
             if (event.getLocation() != null) {
                 payload.put("location", event.getLocation());
@@ -210,13 +299,13 @@ public class MqttService {
             throw new IllegalArgumentException("Token is null");
         String jwt = token.startsWith("Bearer ") ? token.substring(7) : token;
         if (!jwtProvider.validateToken(jwt)) {
-            throw new org.ssafy.eeum.global.error.exception.CustomException(
-                    org.ssafy.eeum.global.error.model.ErrorCode.INVALID_TOKEN);
+            throw new CustomException(
+                    ErrorCode.INVALID_TOKEN);
         }
-        org.springframework.security.core.Authentication auth = jwtProvider.getAuthentication(jwt);
+        Authentication auth = jwtProvider.getAuthentication(jwt);
         Object principal = auth.getPrincipal();
-        if (principal instanceof org.ssafy.eeum.global.auth.model.DeviceDetails) {
-            return ((org.ssafy.eeum.global.auth.model.DeviceDetails) principal).getGroupId();
+        if (principal instanceof DeviceDetails) {
+            return ((DeviceDetails) principal).getGroupId();
         }
         throw new IllegalArgumentException("Invalid token type for IoT");
     }

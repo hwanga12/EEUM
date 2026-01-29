@@ -43,7 +43,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         Log.d(TAG, "Handling data message - Title: $title, Body: $body, Type: $type")
         
-        sendNotification(title, body, type)
+        val notificationId = data["notificationId"]
+        
+        sendNotification(title, body, type, notificationId)
     }
 
     private fun sendRegistrationToServer(token: String) {
@@ -51,12 +53,17 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "Send token to server: $token")
     }
 
-    private fun sendNotification(title: String, body: String, type: String) {
+    private fun sendNotification(title: String, body: String, type: String, notificationId: String? = null) {
         val intent = Intent(this, MainActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        
+        if (notificationId != null) {
+            intent.putExtra("notificationId", notificationId)
+        }
+        
         val pendingIntent = PendingIntent.getActivity(
             this, 0 /* Request code */, intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_ONE_SHOT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
         val isEmergency = type == "EMERGENCY"

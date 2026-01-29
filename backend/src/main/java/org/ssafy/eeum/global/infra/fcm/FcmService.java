@@ -13,20 +13,23 @@ import java.util.stream.Collectors;
 @Slf4j
 public class FcmService {
 
-    public void sendMessageTo(String token, String title, String body, String type) {
+    public void sendMessageTo(String token, String title, String body, String type, Long notificationId) {
         if (token == null || token.isEmpty()) {
             return;
         }
 
         try {
-            Message message = Message.builder()
+            Message.Builder messageBuilder = Message.builder()
                     .setToken(token)
-                    .putAllData(java.util.Map.of(
-                            "title", title,
-                            "body", body,
-                            "type", type != null ? type : "DEFAULT"
-                    ))
-                    .build();
+                    .putData("title", title)
+                    .putData("body", body)
+                    .putData("type", type != null ? type : "DEFAULT");
+
+            if (notificationId != null) {
+                messageBuilder.putData("notificationId", String.valueOf(notificationId));
+            }
+
+            Message message = messageBuilder.build();
 
             String response = FirebaseMessaging.getInstance().send(message);
             log.info("Successfully sent message: " + response);

@@ -84,9 +84,9 @@ public class UserService {
 
         String finalTitle = title != null && !title.isEmpty() ? title : "테스트 알림 🔔";
         String finalBody = body != null && !body.isEmpty() ? body : "이 메시지가 보이면 FCM이 정상 동작하는 것입니다!";
-        String finalType = type != null && !type.isEmpty() ? type : "NORMAL";
+        String finalType = type != null && !type.trim().isEmpty() ? type.trim() : "NORMAL";
 
-        fcmService.sendMessageTo(token, finalTitle, finalBody, finalType);
+        fcmService.sendMessageTo(token, finalTitle, finalBody, finalType, null);
         return "Message sent to " + user.getName();
     }
 }

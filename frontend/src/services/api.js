@@ -56,4 +56,9 @@ export const updateFcmToken = (fcmToken) => {
   return apiClient.put('/users/fcm-token', { fcmToken });
 };
 
+export const logout = () => {
+  return apiClient.post('/auth/logout');
+};
+
 export default apiClient;
+

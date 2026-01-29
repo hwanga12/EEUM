@@ -147,6 +147,17 @@ const routes = [
     component: () => import('../views/CalendarCreate.vue'),
   },
   {
+    path: '/gallery',
+    name: 'GalleryPage',
+    name: 'GalleryPage',
+    component: () => import('../views/GalleryPage.vue'),
+  },
+  {
+    path: '/gallery/album/:id',
+    name: 'AlbumPage',
+    component: () => import('../views/AlbumPage.vue')
+  },
+  {
     path: '/calendar/detail',
     name: 'DetailSchedule',
     component: () => import('../views/DetailSchedule.vue'),

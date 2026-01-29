@@ -16,17 +16,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     // FCM 메시지 수신 시 호출
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        Log.d(TAG, "From: ${remoteMessage.from}")
+        Log.w(TAG, "🚨 From: ${remoteMessage.from}")
 
-        // Check if message contains data payload.
+        // 메시지에 데이터 페이로드가 있는지 확인
         if (remoteMessage.data.isNotEmpty()) {
-            Log.d(TAG, "Message data payload: ${remoteMessage.data}")
+            Log.w(TAG, "🚨 Message data payload: ${remoteMessage.data}")
             handleDataMessage(remoteMessage.data)
+        } else {
+            Log.w(TAG, "🚨 Message data payload is EMPTY")
         }
 
-        // Check if message contains notification payload.
+        // 메시지에 알림 페이로드가 있는지 확인
         remoteMessage.notification?.let {
-            Log.d(TAG, "Message Notification Body: ${it.body}")
+            Log.w(TAG, "🚨 Message Notification Body: ${it.body}")
             sendNotification(it.title ?: "알림", it.body ?: "", "NORMAL")
         }
     }
@@ -49,7 +51,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun sendRegistrationToServer(token: String) {
-        // TODO: Implement this method to send token to your app server.
+        // TODO: 토큰을 앱 서버로 전송하는 로직 구현 필요
         Log.d(TAG, "Send token to server: $token")
     }
 
@@ -123,6 +125,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                     setSound(defaultSoundUri, audioAttributes)
                 }
                 notificationManager.createNotificationChannel(channel)
+                Log.w(TAG, "🚨 Emergency Channel Created/Updated")
             } else {
                 val channel = NotificationChannel(
                     channelId,
@@ -133,6 +136,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             }
         }
 
+        Log.w(TAG, "🚨 Calling notificationManager.notify with ID: ${if(isEmergency) 999 else 0}")
         notificationManager.notify(if(isEmergency) 999 else 0, notificationBuilder.build())
     }
 

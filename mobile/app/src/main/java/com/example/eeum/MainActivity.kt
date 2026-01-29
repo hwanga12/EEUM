@@ -6,6 +6,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
 import android.app.Dialog
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Message
@@ -25,6 +26,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.eeum.ui.theme.EeumTheme
 
+// State Delegation Imports
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 //Firebase 사용을 위해 필요한 import들
 import android.Manifest
 import android.content.pm.PackageManager
@@ -38,7 +43,11 @@ class MainActivity : ComponentActivity() {
     // FCM 토큰 저장 변수
     private var fcmToken: String = ""
     // 알림 ID 저장 변수
+    @Volatile
     private var pendingNotificationId: String? = null
+    
+    // 알림 이벤트를 WebView로 전달하기 위한 Flow
+    val notificationEvent = kotlinx.coroutines.flow.MutableSharedFlow<String>()
 
     // 파일 업로드 콜백
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
@@ -51,13 +60,19 @@ class MainActivity : ComponentActivity() {
         filePathCallback = null
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val notiId = intent?.getStringExtra("notificationId")
+        val notiId = intent.getStringExtra("notificationId")
         if (notiId != null) {
             pendingNotificationId = notiId
             Log.d("FCM", "onNewIntent: Received Notification ID: $notiId")
+            // android.widget.Toast.makeText(this, "NewIntent ID: $notiId", android.widget.Toast.LENGTH_LONG).show()
+            
+            // WebView로 이벤트 전달
+            lifecycleScope.launch {
+                notificationEvent.emit(notiId)
+            }
         }
     }
 
@@ -66,6 +81,19 @@ class MainActivity : ComponentActivity() {
 
         pendingNotificationId = intent.getStringExtra("notificationId")
         Log.d("FCM", "onCreate: Pending Notification ID: $pendingNotificationId")
+        if (pendingNotificationId != null) {
+            // android.widget.Toast.makeText(this, "Create ID: $pendingNotificationId", android.widget.Toast.LENGTH_LONG).show()
+            // onCreate 시점에는 WebView가 아직 없을 수 있으므로, WebViewScreen 내부에서 초기값 확인 로직(bridge)과 함께 동작하거나
+            // 약간의 딜레이 후 emit 시도 (Flow는 구독자가 없으면 유실될 수 있음 -> replay=1로 변경 고려하거나 bridge polling 병행)
+            // 여기서는 JS Bridge Polling이 초기값은 처리하므로, 여기서는 emit 생략 가능하지만 안전하게 emit 시도
+             lifecycleScope.launch {
+                 // 약간의 지연을 주어 WebView 로딩 시간을 범
+                 kotlinx.coroutines.delay(1000)
+                 if (pendingNotificationId != null) {
+                     notificationEvent.emit(pendingNotificationId!!)
+                 }
+            }
+        }
 
         Log.d("SHD_DEBUG", "앱이 시작되었습니다!")
         healthManager = SamsungHealthManager(this) // 매니저 초기화
@@ -77,7 +105,13 @@ class MainActivity : ComponentActivity() {
         FirebaseMessaging.getInstance().token
             .addOnSuccessListener {
                 fcmToken = it
-                Log.d("FCM", "TOKEN=$it")
+                Log.d("FCM", "✅ FCM TOKEN SUCCESS: $it")
+                // android.widget.Toast.makeText(this, "FCM Token: ${it.take(5)}...", android.widget.Toast.LENGTH_SHORT).show()
+                // Bridge가 나중에 tokenProvider를 호출하여 가져감
+            }
+            .addOnFailureListener {
+                Log.e("FCM", "❌ FCM TOKEN FAILURE", it)
+                // android.widget.Toast.makeText(this, "FCM Fail: ${it.message}", android.widget.Toast.LENGTH_LONG).show()
             }
 
         setContent {
@@ -93,6 +127,7 @@ class MainActivity : ComponentActivity() {
                         pendingNotificationId = null // Consume it
                         id
                     },
+                    notificationEvent = notificationEvent, // Flow 전달
                     onShowFileChooser = { callback ->
                         filePathCallback = callback
                         fileChooserLauncher.launch("image/*")
@@ -157,6 +192,7 @@ class HealthJsBridge(
     }
 }
 
+
 // ====== WebViewScreen ======
 // 충돌났던 두 시그니처를 하나로 합침:
 // 1) WebViewScreen(activity: ComponentActivity, healthManager: SamsungHealthManager)
@@ -167,12 +203,25 @@ fun WebViewScreen(
     healthManager: SamsungHealthManager,
     tokenProvider: () -> String,
     notificationIdProvider: () -> String?,
+    notificationEvent: kotlinx.coroutines.flow.SharedFlow<String>,
     onShowFileChooser: (ValueCallback<Array<Uri>>) -> Unit
 ) {
+    // WebView 변수 참조를 위해 remember 사용
+    var webViewRef by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<WebView?>(null) }
+    
+    // Flow 수집 및 JS 호출
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        notificationEvent.collect { notiId ->
+            Log.d("WebViewScreen", "Pushing Notification ID to JS: $notiId")
+            webViewRef?.evaluateJavascript("javascript:if(window.onNativeNotification){window.onNativeNotification('$notiId')}", null)
+        }
+    }
+
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { context ->
             WebView(context).apply {
+                webViewRef = this // 참조 저장
 
                 // WebView 설정 블록(주어진 내용 모두 보존)
                 settings.apply {
@@ -222,10 +271,10 @@ fun WebViewScreen(
 
 
                 // 로컬 개발 환경용
-                loadUrl("http://10.0.2.2:5173")
+                // loadUrl("http://10.0.2.2:5173")
 
                 // 배포 서버용
-                // loadUrl("https://i14a105.p.ssafy.io")
+                loadUrl("https://i14a105.p.ssafy.io")
             }
         }
     )

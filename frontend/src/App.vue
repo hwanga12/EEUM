@@ -19,32 +19,32 @@ onMounted(async () => {
     // [NEW] 앱 네이티브 저장소(SharedPreferences)에도 백업
     if (window.AndroidBridge && window.AndroidBridge.saveAccessToken) {
         window.AndroidBridge.saveAccessToken(token);
-        console.log("✅ 토큰이 앱 네이티브 저장소에 백업되었습니다.");
     }
     
-    console.log("✅ 새로운 토큰 저장 성공!");
-
     // 3. [핵심] 쿼리 파라미터를 지우고 프로필 페이지로 부드럽게 이동
-    // window.location.href 대신 router.replace를 써야 흐름이 안 끊깁니다.
     await router.replace('/home');
   }
 
-  // 4. [NEW] 네이티브 세션 복구 (Retry Logic 포함)
+  // 4. [NEW] 네이티브 세션 복구 및 동기화 (Self-Healing)
   const restoreSession = async (retryCount = 0) => {
-      // 이미 로컬스토리지에 토큰이 있으면 복구할 필요 없음
-      if (localStorage.getItem('accessToken')) {
-          await userStore.fetchUser(); // 유저 정보는 로드
+      const localToken = localStorage.getItem('accessToken');
+      
+      // 1) 로컬에 토큰이 있는 경우 -> 네이티브에도 백업(동기화)
+      if (localToken) {
+          if (window.AndroidBridge && window.AndroidBridge.saveAccessToken) {
+             window.AndroidBridge.saveAccessToken(localToken);
+          }
+          await userStore.fetchUser();
           return;
       }
 
-      // AndroidBridge가 준비되었는지 확인
+      // 2) 로컬에는 없는데 네이티브에는 있는지 확인 (복구 시도)
       if (window.AndroidBridge && window.AndroidBridge.getAccessToken) {
           try {
               const nativeToken = window.AndroidBridge.getAccessToken();
               // nativeToken이 'null' 문자열이거나 실제 null일 수 있음
               if (nativeToken && nativeToken !== "null" && nativeToken.length > 0) {
                   localStorage.setItem('accessToken', nativeToken);
-                  console.log("♻️ 네이티브 저장소에서 토큰을 복구했습니다:", nativeToken);
                   
                   // 유저 정보 로드 시도
                   await userStore.fetchUser();
@@ -54,13 +54,12 @@ onMounted(async () => {
                   return;
               }
           } catch (e) {
-              console.error("❌ Failed to restore Native Token:", e);
+
           }
       }
 
       // 아직 브릿지가 없거나 토큰이 없으면 재시도 (최대 5번, 0.5초 간격)
       if (retryCount < 5) {
-          console.log(`⏳ Waiting for AndroidBridge... (${retryCount + 1}/5)`);
           setTimeout(() => restoreSession(retryCount + 1), 500);
       }
   };
@@ -70,9 +69,8 @@ onMounted(async () => {
 
   // 5. [NEW] Android FCM Token 연동 (Retry Logic 추가)
   const syncFcmToken = async (retryCount = 0) => {
-  // (기존 FCM sync 로직 유지...)
       if (retryCount > 10) { // 최대 10번 (10초) 시도
-         console.warn("⚠️ FCM Token Fetch Timeout");
+
          return;
       }
 
@@ -80,16 +78,12 @@ onMounted(async () => {
           try {
               const fcmToken = window.AndroidBridge.getFcmToken();
               if (fcmToken && fcmToken.length > 0) {
-                  console.log("📱 FCM Token from Android:", fcmToken);
                   const { updateFcmToken } = await import('@/services/api');
                   await updateFcmToken(fcmToken);
-                  console.log("✅ FCM Token Updated on Server");
                   return; // 성공 시 종료
-              } else {
-                  console.log(`⏳ FCM Token not ready yet (Attempt ${retryCount + 1}). Retrying...`);
               }
           } catch (e) {
-              console.error("❌ Failed to update FCM Token:", e);
+
           }
       }
       
@@ -97,7 +91,99 @@ onMounted(async () => {
       setTimeout(() => syncFcmToken(retryCount + 1), 1000);
   };
 
-  // FCM 토큰 동기화 시작 (조금 늦게 시작해도 됨)
+  // 6. [NEW] 알림 클릭 처리 (Android Bridge)
+  const checkNotificationFromNative = async (retryCount = 0) => {
+    if (window.AndroidBridge && window.AndroidBridge.consumeNotificationId) {
+      try {
+        const notificationId = window.AndroidBridge.consumeNotificationId();
+        if (notificationId) {
+           // API 호출을 위해 axios/api 인스턴스 가져오기
+           if (!userStore.profile) {
+               try {
+                   await userStore.fetchUser();
+               } catch (e) {
+
+               }
+           }
+           const currentUserId = userStore.profile?.id;
+
+           if (currentUserId) {
+              const { default: api } = await import('@/services/api'); 
+              await api.post('/notifications/read', {
+                 notificationId: Number(notificationId),
+                 userId: currentUserId
+              });
+           } else {
+
+           }
+        }
+      } catch (e) {
+
+      }
+    } else {
+       // 브릿지가 아직 로드되지 않았을 수 있으므로 잠시 후 재시도
+       if (retryCount < 5) {
+          setTimeout(() => checkNotificationFromNative(retryCount + 1), 500);
+       }
+    }
+  };
+
+  // 7. [NEW] 앱이 백그라운드에서 돌아왔을 때 알림 체크 (visibilitychange + focus)
+  const handleAppVisible = () => {
+    if (document.visibilityState === 'visible') {
+      checkNotificationFromNative();
+      // Race Condition 방지용 재시도
+      setTimeout(checkNotificationFromNative, 1000);
+      setTimeout(checkNotificationFromNative, 2000);
+    }
+  };
+
+  // 8. [NEW] Native -> Notification Push 방식 지원
+  window.onNativeNotification = (notificationId) => {
+      
+      if (notificationId) {
+          (async () => {
+             try {
+                 // 1. 토큰 확인 & 복구
+                 let token = localStorage.getItem('accessToken');
+                 if (!token) {
+                     if (window.AndroidBridge && window.AndroidBridge.getAccessToken) {
+                         token = window.AndroidBridge.getAccessToken();
+                         if (token && token !== "null" && token.length > 0) {
+                             localStorage.setItem('accessToken', token);
+                         } else {
+
+                         }
+                     }
+                 }
+
+                 // 2. 유저 정보 확인 & 로드
+                 if (!userStore.profile) {
+                     await userStore.fetchUser();
+                 }
+                 
+                 const currentUserId = userStore.profile?.id;
+
+                 if (currentUserId) {
+                     const { default: api } = await import('@/services/api');
+                     
+                     await api.post('/notifications/read', {
+                         notificationId: Number(notificationId),
+                         userId: currentUserId
+                     });
+                     
+                 } else {
+
+                 }
+             } catch(e) {
+
+             }
+          })();
+      }
+  };
+
+  // 초기 실행
+  setTimeout(() => checkNotificationFromNative(), 500);
   setTimeout(() => syncFcmToken(), 1000);
 });
 </script>

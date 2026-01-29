@@ -51,6 +51,11 @@ public class Message {
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
+
+    @Column(name = "is_synced", columnDefinition = "TINYINT", nullable = false)
+    @Builder.Default
+    private Boolean isSynced = false;
+
     @Builder
     public Message(Family group, User sender, String content, String voiceUrl) {
         this.group = group;
@@ -69,6 +74,7 @@ public class Message {
     public void markSynced() {
         this.isSynced = true;
     }
+
 
     public void markRead() {
         this.isRead = true;

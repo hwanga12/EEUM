@@ -204,6 +204,8 @@ async def refresh_wifi_cache(state: MonitorState) -> None:
 async def wifi_active_loop(state: MonitorState, interval_sec: float = 1.0) -> None:
     try:
         while True:
+            if getattr(state, "shutting_down", False):
+                return
             await refresh_wifi_active(state)
             await asyncio.sleep(interval_sec)
     except asyncio.CancelledError:
@@ -221,6 +223,8 @@ async def wifi_scan_loop(
     """
     try:
         while True:
+            if getattr(state, "shutting_down", False):
+                return
             now = time.time()
             if (now - state.wifi_ui_last_ping) < ui_recent_sec:
                 await refresh_wifi_cache(state)

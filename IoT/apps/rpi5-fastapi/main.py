@@ -67,6 +67,9 @@ async def async_main():
         state.shutting_down = True
         if state.mqtt:
             state.mqtt.deactivate()
+        await state.queue.put(None)
+        await state.mqtt_inbound.put((None, None))
+        await state.cmd_queue.put(None)
         for t in (consumer_task, mqtt_in_task, cmd_task, wifi_active_task, wifi_scan_task):
             t.cancel()
         await asyncio.gather(
@@ -80,7 +83,10 @@ async def async_main():
         state.tasks.clear()
 
 def main():
-    asyncio.run(async_main())
+    try:
+        asyncio.run(async_main())
+    except KeyboardInterrupt:
+        pass
 
 if __name__ == "__main__":
     main()

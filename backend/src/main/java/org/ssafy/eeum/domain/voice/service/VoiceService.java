@@ -7,6 +7,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation; // 추가됨
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.ssafy.eeum.domain.auth.entity.User;
@@ -104,12 +105,13 @@ public class VoiceService {
         }
     }
 
-    // 4. TTS 생성 (URL 반환)
+    // 4. TTS 생성 (URL 반환) - 독립 트랜잭션 설정
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public String createTtsUrl(Integer userId, String text) {
         List<VoiceSample> samples = sampleRepository.findAllByUserId(userId);
         if (samples.isEmpty()) {
-            throw new CustomException(ErrorCode.ENTITY_NOT_FOUND, "학습된 음성 샘플이 없습니다.");
+            // ErrorCode에 맞는 메시지를 전달하거나 기본 생성자 활용
+            throw new CustomException(ErrorCode.ENTITY_NOT_FOUND);
         }
         VoiceSample representativeSample = samples.get(0);
 
@@ -133,10 +135,10 @@ public class VoiceService {
             if (response != null && "success".equals(response.get("status"))) {
                 return (String) response.get("full_url");
             }
-            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "TTS 생성 실패");
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
         } catch (Exception e) {
             log.error("TTS 생성 호출 실패: {}", e.getMessage());
-            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR, "TTS 생성 중 오류가 발생했습니다.");
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 

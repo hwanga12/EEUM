@@ -21,13 +21,13 @@
       <button 
         @click="setActive('home')" 
         class="absolute -top-12 rounded-full p-5 shadow-xl flex items-center justify-center border-[5px] border-white active:scale-95 transition-transform duration-200"
-        :class="activeTab !== 'home' && $route.path.startsWith('/calendar') ? 'bg-white text-[#8d6e63]' : 'bg-[#e76f51] text-white'"
+        :class="activeTab !== 'home' && ($route.path.startsWith('/calendar') || $route.path.startsWith('/gallery')) ? 'bg-white text-[#8d6e63]' : 'bg-[#e76f51] text-white'"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       </button>
-      <span class="text-xs font-bold mt-10" :class="activeTab !== 'home' && $route.path.startsWith('/calendar') ? 'text-[#8d6e63]' : 'text-[#e76f51]'">Home</span>
+      <span class="text-xs font-bold mt-10" :class="activeTab !== 'home' && ($route.path.startsWith('/calendar') || $route.path.startsWith('/gallery')) ? 'text-[#8d6e63]' : 'text-[#e76f51]'">Home</span>
     </div>
 
     <!-- Calendar -->
@@ -59,6 +59,8 @@ const activeTab = ref('home');
 const updateActiveTab = () => {
     if (route.path.startsWith('/calendar')) {
         activeTab.value = 'calendar';
+    } else if (route.path.startsWith('/gallery')) {
+        activeTab.value = 'gallery';
     } else if (route.path === '/home') {
         activeTab.value = 'home';
     } else if (route.path === '/voice-register') {
@@ -79,6 +81,8 @@ const setActive = (tab) => {
       router.push('/voice-register');
   } else if (tab === 'calendar') {
       router.push('/calendar');
+  } else if (tab === 'gallery') {
+      router.push('/gallery');
   } else if (tab === 'home') {
       router.push('/home');
   } else if (tab !== 'home') {

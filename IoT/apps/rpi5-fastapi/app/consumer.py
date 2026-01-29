@@ -27,12 +27,10 @@ def _is_vision(ev: Event) -> bool:
     )
 
 async def consume_events(state: MonitorState):
-    while not state.shutting_down:
-        try:
-            ev = await asyncio.wait_for(state.queue.get(), timeout=1.0)
-        except asyncio.TimeoutError:
-            continue
-
+    while True:
+        ev = await state.queue.get()
+        if ev is None:
+            return
         try:
             await async_record_event(state, ev)
 
@@ -62,7 +60,10 @@ async def consume_events(state: MonitorState):
 async def consume_mqtt_inbound(state: MonitorState):
     loop = asyncio.get_running_loop()
     while True:
-        topic, payload = await state.mqtt_inbound.get()
+        item = await state.mqtt_inbound.get()
+        if item is None:
+            return
+        topic, payload = item
 
         cmd = Command(topic=topic, payload=payload)
 
@@ -81,6 +82,8 @@ async def consume_commands(state: MonitorState):
 
     while True:
         cmd = await state.cmd_queue.get()
+        if cmd is None:
+            return
 
         info = parse_device_topic(cmd.topic)
         if info is None:

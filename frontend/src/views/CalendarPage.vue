@@ -90,18 +90,44 @@
       <div class="h-px bg-slate-200 w-full mb-6"></div>
       <div class="space-y-4 px-2 pb-24">
         <div class="flex justify-between items-center mb-2">
-          <span class="text-sm text-slate-500">음력 12월 24일</span>
+          <span class="text-sm text-slate-500">음력 {{ month }}월 24일</span> <!-- Placeholder for Lunar Date -->
           <button class="text-slate-400"><span class="material-symbols-outlined">sentiment_satisfied</span></button>
         </div>
-        <div @click="$router.push('/calendar/detail')" class="bg-[#FFFBF7] p-5 rounded-3xl ios-shadow border border-slate-100 transition-all active:scale-[0.98] cursor-pointer">
+
+        <div v-if="events.length === 0" class="text-center py-10 text-slate-400">
+            일정이 없습니다.
+        </div>
+
+        <div v-for="event in events" :key="event.scheduleId" 
+             @click="goToDetail(event.scheduleId)" 
+             class="bg-[#FFFBF7] p-5 rounded-3xl ios-shadow border border-slate-100 transition-all active:scale-[0.98] cursor-pointer mb-3 relative overflow-hidden">
+          
+          <!-- Visited Badge -->
+          <div v-if="event.isVisited" class="absolute top-0 right-0 bg-accent-sage text-[#2d5a3f] text-[10px] font-bold px-2 py-1 rounded-bl-xl">
+            방문 완료
+          </div>
+
           <div class="flex items-start gap-4">
-            <div class="flex flex-col items-center mt-1">
-              <span class="text-base font-bold text-slate-800">12:00</span>
+            <div class="flex flex-col items-center mt-1 min-w-[3rem]">
+              <span class="text-base font-bold text-slate-800">{{ event.startAt.split('T')[1]?.substring(0, 5) || '00:00' }}</span>
             </div>
-            <div class="w-1.5 h-10 bg-accent-lavender rounded-full"></div>
+            
+            <div class="w-1.5 h-10 rounded-full" :class="{
+                'bg-accent-lavender': event.categoryType === 'FAMILY_EVENT',
+                'bg-accent-peach': event.categoryType === 'VISIT', 
+                'bg-accent-sage': event.categoryType === 'HEALTH',
+                'bg-slate-300': !['FAMILY_EVENT', 'VISIT', 'HEALTH'].includes(event.categoryType)
+            }"></div>
+
             <div class="flex-1">
-              <h3 class="text-xl font-bold text-slate-900 mb-0.5">졸업식</h3>
-              <p class="text-xs text-slate-500">오후 12:00 - 오후 1:00</p>
+              <div class="flex items-center gap-2">
+                  <h3 class="text-xl font-bold text-slate-900 mb-0.5">{{ event.title }}</h3>
+                  <!-- Modified Icon: Display if parentId exists (recurrence exception) -->
+                  <span v-if="event.parentId" class="material-symbols-outlined text-sm text-slate-400" title="수정된 반복 일정">edit_calendar</span>
+                  <!-- Yearly Icon -->
+                  <span v-if="event.repeatType === 'YEARLY'" class="material-symbols-outlined text-sm text-slate-400" title="매년 반복">cached</span>
+              </div>
+              <p class="text-xs text-slate-500">{{ event.startAt.split('T')[1]?.substring(0, 5) }} - {{ event.endAt.split('T')[1]?.substring(0, 5) }}</p>
             </div>
           </div>
         </div>
@@ -117,24 +143,56 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import BottomNav from '@/components/layout/BottomNav.vue';
+import { scheduleService } from '@/services/scheduleService';
+// Assuming we have a way to get the current family ID, e.g., from a store.
+// For now, I'll assume we can get it from localStorage or a simple store if it exists.
+import { useFamilyStore } from '@/stores/family'; 
 
-// TODO: Replace with actual API call
+const router = useRouter();
+const familyStore = useFamilyStore();
+
+const currentDate = ref(new Date());
+const events = ref([]);
+
+const year = computed(() => currentDate.value.getFullYear());
+const month = computed(() => currentDate.value.getMonth() + 1);
+
 const fetchCalendarEvents = async () => {
+    if (!familyStore.selectedFamily?.id) return;
+    
     console.log("Fetching calendar events...");
-    // Mock API call
-    /*
     try {
-        const response = await api.get('/calendar/events');
-        events.value = response.data;
+        const data = await scheduleService.getMonthlySchedules(familyStore.selectedFamily.id, year.value, month.value);
+        events.value = data;
     } catch (error) {
         console.error("Failed to fetch events", error);
     }
-    */
 };
 
-onMounted(() => {
+const goToDetail = (scheduleId) => {
+    router.push({ name: 'DetailSchedule', query: { id: scheduleId } });
+};
+
+// Simple helper to check if a date has events - rudimentary implementation
+// In a real grid, you'd map these to the specific days.
+const getEventsForDay = (day) => {
+    // This logic needs to be robust for comparing YYYY-MM-DD strings
+    // Simulating for now based on the visual requirement
+    return [];
+};
+
+onMounted(async () => {
+    // Ensure family is loaded
+    if (!familyStore.selectedFamily) {
+        await familyStore.fetchFamilies();
+    }
+    fetchCalendarEvents();
+});
+
+watch([year, month], () => {
     fetchCalendarEvents();
 });
 </script>

@@ -472,18 +472,20 @@ initialLoad();
         return {"ok": True, "ts": state.wifi_ui_last_ping}
 
     @app.post("/eeum/token")
-    async def token(req: TokenReq):
+    async def set_token(req: TokenReq):
       await state.device_store.async_set_token(req.token)
 
       if state.mqtt is None:
           state.mqtt = MqttClient(
               inbound_queue=state.mqtt_inbound,
+              loop=state.loop,
               token=req.token,
               link_getter=state.device_store.build_pir_link,
           )
           state.mqtt.activate()
       else:
           state.mqtt.set_token(req.token)   # 연결 중이면 online 갱신
+          state.mqtt.activate()
 
       return {"ok": True}
 

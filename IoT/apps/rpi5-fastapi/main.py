@@ -37,6 +37,7 @@ async def async_main():
     state = MonitorState()
     raw_store = JsonStateStore(DEVICE_PATH, default=DEFAULT_DEVICE)
     state.device_store = DeviceStore(raw_store)
+    state.loop = asyncio.get_running_loop()
     app = create_app(state)
     config = uvicorn.Config(app, host=HOST, port=PORT)
     server = uvicorn.Server(config)
@@ -45,6 +46,7 @@ async def async_main():
     if token:
         state.mqtt = MqttClient(
             inbound_queue=state.mqtt_inbound,
+            loop=state.loop,
             token=token,
             link_getter=state.device_store.build_pir_link,  # pir만 반영
         )
@@ -62,13 +64,20 @@ async def async_main():
     try:
         await server.serve()
     finally:
+        state.shutting_down = True
+        if state.mqtt:
+            state.mqtt.deactivate()
         for t in (consumer_task, mqtt_in_task, cmd_task, wifi_active_task, wifi_scan_task):
             t.cancel()
-        for t in (consumer_task, mqtt_in_task, cmd_task, wifi_active_task, wifi_scan_task):
-            try:
-                await t
-            except asyncio.CancelledError:
-                pass
+        await asyncio.gather(
+            consumer_task, mqtt_in_task, cmd_task, wifi_active_task, wifi_scan_task,
+            return_exceptions=True
+        )
+        tasks = list(state.tasks.values())
+        for t in tasks:
+            t.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        state.tasks.clear()
 
 def main():
     asyncio.run(async_main())

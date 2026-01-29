@@ -99,7 +99,9 @@ async def pir_absence_timer(state: MonitorState, device_id: str, base_ts: float)
 
         _set_absent(state, device_id, base_ts, "pir_no_motion")
     except asyncio.CancelledError:
-        return
+        raise
+    except Exception:
+        pass
     
 async def vision_exit_absence_timer(state: MonitorState, device_id: str, base_ts: float) -> None:
     try:
@@ -115,7 +117,9 @@ async def vision_exit_absence_timer(state: MonitorState, device_id: str, base_ts
 
         _set_absent(state, device_id, base_ts, "vision_exit_absence")
     except asyncio.CancelledError:
-        return
+        raise
+    except Exception:
+        pass
 
 def handle_pir_motion(state: MonitorState, ev: Event) -> None:
     ts = ev.detected_at
@@ -176,6 +180,8 @@ async def refresh_wifi_active(state: MonitorState) -> None:
     try:
         state.wifi_active = await async_get_active_on_wlan0()
         state.wifi_active_ts = time.time()
+    except asyncio.CancelledError:
+        raise
     except Exception:
         pass
 
@@ -190,6 +196,8 @@ async def refresh_wifi_cache(state: MonitorState) -> None:
             state.wifi_scan = aps
             state.wifi_profiles = [p.__dict__ for p in profiles]
             state.wifi_cache_ts = time.time()
+        except asyncio.CancelledError:
+            raise
         except Exception:
             pass
 
@@ -199,7 +207,9 @@ async def wifi_active_loop(state: MonitorState, interval_sec: float = 1.0) -> No
             await refresh_wifi_active(state)
             await asyncio.sleep(interval_sec)
     except asyncio.CancelledError:
-        return
+        raise
+    except Exception:
+        pass
 
 async def wifi_scan_loop(
     state: MonitorState,
@@ -216,4 +226,6 @@ async def wifi_scan_loop(
                 await refresh_wifi_cache(state)
             await asyncio.sleep(interval_sec)
     except asyncio.CancelledError:
-        return
+        raise
+    except Exception:
+        pass

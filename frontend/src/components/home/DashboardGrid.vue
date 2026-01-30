@@ -32,11 +32,13 @@
 import { ref, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user';
+import { useModalStore } from '@/stores/modal';
 import { useFamilyStore } from '@/stores/family';
 
-const router = useRouter();
-const userStore = useUserStore();
+
+const modalStore = useModalStore();
 const familyStore = useFamilyStore();
+
 
 // Icons as mock components for simplicity in this snippet, 
 // normally would import or use inline SVG efficiently
@@ -72,8 +74,8 @@ const handleCardClick = (item) => {
     if (familyId) {
       router.push(`/families/${familyId}/medications`);
     } else {
-      console.error('No familyId found in store');
-      alert('가족 정보를 찾을 수 없습니다.');
+      console.error('No familyId found in user profile or storage');
+      modalStore.openAlert('가족 정보를 찾을 수 없습니다.');
     }
   } else if (item.route) {
     router.push(item.route);

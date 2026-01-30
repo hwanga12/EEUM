@@ -201,8 +201,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useFamilyStore } from '@/stores/family';
+import { storeToRefs } from 'pinia';
 import api from '@/services/api';
 import MedicationAddModal from './group-setup/MedicationAddModal.vue';
 import { useModalStore } from '@/stores/modal';
@@ -211,7 +213,10 @@ const modalStore = useModalStore();
 
 const route = useRoute();
 const router = useRouter();
-const familyId = route.params.familyId;
+const familyStore = useFamilyStore();
+const { selectedFamily } = storeToRefs(familyStore);
+
+const familyId = ref(route.params.familyId);
 
 const medications = ref([]);
 const isLoading = ref(true);
@@ -302,8 +307,9 @@ const activeHours = computed(() => {
 });
 
 const fetchMedications = async () => {
+    if (!familyId.value) return;
     try {
-        const response = await api.get(`/families/${familyId}/medications`);
+        const response = await api.get(`/families/${familyId.value}/medications`);
         medications.value = response.data;
     } catch (error) {
         console.error('Failed to fetch medications:', error);
@@ -318,7 +324,7 @@ const goBack = () => {
 };
 
 const goToDetail = (id) => {
-    router.push({ name: 'MedicationDetail', params: { familyId, medicationId: id } });
+    router.push({ name: 'MedicationDetail', params: { familyId: familyId.value, medicationId: id } });
 };
 
 const openAddModal = () => {
@@ -342,8 +348,9 @@ const handleAddMedication = async (medData) => {
             notificationTimes: medData.notificationTimes
         }];
 
-        await api.post(`/families/${familyId}/medications`, payload);
+        await api.post(`/families/${familyId.value}/medications`, payload);
         await modalStore.openAlert('추가되었습니다.');
+
         closeModal();
         fetchMedications(); // Refresh list
     } catch (error) {
@@ -353,8 +360,31 @@ const handleAddMedication = async (medData) => {
 };
 
 onMounted(() => {
-    if (familyId) {
+    // Sync if needed
+    if (!familyId.value && selectedFamily.value) {
+        familyId.value = selectedFamily.value.id;
+        router.replace({ name: 'MedicationList', params: { familyId: familyId.value } });
+    }
+
+    if (familyId.value) {
         fetchMedications();
+    }
+});
+
+// Watch Route Changes
+watch(() => route.params.familyId, (newId) => {
+    if (newId && newId !== familyId.value) {
+        familyId.value = newId;
+        fetchMedications();
+    }
+});
+
+// Watch Store Changes (Group Selector)
+watch(selectedFamily, (newFamily) => {
+    if (newFamily && newFamily.id) {
+        if (String(newFamily.id) !== String(route.params.familyId)) {
+            router.replace({ name: 'MedicationList', params: { familyId: newFamily.id } });
+        }
     }
 });
 

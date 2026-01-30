@@ -148,8 +148,7 @@ const routes = [
   },
   {
     path: '/gallery',
-    name: 'GalleryPage',
-    name: 'GalleryPage',
+
     component: () => import('../views/GalleryPage.vue'),
   },
   {

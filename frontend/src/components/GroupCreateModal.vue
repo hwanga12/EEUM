@@ -1,3 +1,4 @@
+<template>
   <Teleport to="body">
     <div v-if="show" class="fixed inset-0 z-[60] overflow-y-auto bg-black bg-opacity-50" @click.self="close">
       <div class="flex min-h-full items-center justify-center p-4">
@@ -26,6 +27,7 @@
       </div>
     </div>
   </Teleport>
+</template>
 
 <script setup>
 import { ref, defineProps, defineEmits } from 'vue';

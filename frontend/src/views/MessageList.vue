@@ -386,9 +386,11 @@ import { useRouter, useRoute } from 'vue-router'
 import { messageService } from '@/services/messageService'
 import { familyService } from '@/services/familyService'
 import BottomNav from '@/components/layout/BottomNav.vue'
+import { useModalStore } from '@/stores/modal'
 
 const router = useRouter()
 const route = useRoute()
+const modalStore = useModalStore()
 
 const messages = ref([])
 const loading = ref(false)
@@ -531,7 +533,7 @@ const sendMessage = async () => {
     console.error('메시지 전송 실패:', error)
     console.error('Error response:', error.response?.data)
     console.error('Error status:', error.response?.status)
-    alert(`메시지 전송에 실패했습니다.\n${error.response?.data?.message || error.message}`)
+    await modalStore.openAlert(`메시지 전송에 실패했습니다.\n${error.response?.data?.message || error.message}`)
   } finally {
     sending.value = false
   }

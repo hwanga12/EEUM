@@ -174,6 +174,9 @@
 import { ref, computed } from 'vue'
 import IconCircle from './IconCircle.vue'
 import RadioDot from './RadioDot.vue'
+import { useModalStore } from '@/stores/modal'
+
+const modalStore = useModalStore()
 
 defineProps({ show: Boolean })
 const emit = defineEmits(['close', 'join-group', 'create-group-request'])
@@ -223,7 +226,7 @@ const submitJoin = () => {
   }
 
   if (!code) {
-      alert('초대 코드를 입력해주세요.');
+      modalStore.openAlert('초대 코드를 입력해주세요.');
       return;
   }
 

@@ -163,10 +163,12 @@ import { useRouter, useRoute } from 'vue-router';
 import BottomNav from '@/components/layout/BottomNav.vue';
 import { scheduleService } from '@/services/scheduleService';
 import { useFamilyStore } from '@/stores/family';
+import { useModalStore } from '@/stores/modal';
 
 const router = useRouter();
 const route = useRoute();
 const familyStore = useFamilyStore();
+const modalStore = useModalStore();
 
 const isEditMode = computed(() => !!route.query.id);
 const pageTitle = computed(() => isEditMode.value ? '일정 수정' : '일정 추가');
@@ -234,7 +236,7 @@ onMounted(async () => {
             }
         } catch (error) {
             console.error("Failed to load schedule for edit", error);
-            alert("일정 정보를 불러오는데 실패했습니다.");
+            await modalStore.openAlert("일정 정보를 불러오는데 실패했습니다.");
             router.back();
         }
     }
@@ -265,7 +267,7 @@ const submitForm = async () => {
     console.log("submitForm called");
     if (!familyStore.selectedFamily?.id) {
         console.error("No family selected");
-        alert("가족 정보가 없습니다. 다시 시도해주세요.");
+        await modalStore.openAlert("가족 정보가 없습니다. 다시 시도해주세요.");
         return;
     }
 
@@ -295,7 +297,7 @@ const submitForm = async () => {
         router.back();
     } catch (error) {
         console.error("Failed to save schedule", error);
-        alert('일정 저장에 실패했습니다.');
+        await modalStore.openAlert('일정 저장에 실패했습니다.');
     }
 };
 </script>

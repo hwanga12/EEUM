@@ -31,6 +31,9 @@
 
 <script setup>
 import { ref, defineProps, defineEmits } from 'vue';
+import { useModalStore } from '@/stores/modal';
+
+const modalStore = useModalStore();
 
 defineProps({
   show: {
@@ -50,7 +53,7 @@ const close = () => {
 
 const handleCreate = () => {
   if (!groupName.value || !relationship.value) {
-    alert('그룹 이름과 관계를 모두 입력해주세요.');
+    modalStore.openAlert('그룹 이름과 관계를 모두 입력해주세요.');
     return;
   }
   emit('create-group', { name: groupName.value, relationship: relationship.value });

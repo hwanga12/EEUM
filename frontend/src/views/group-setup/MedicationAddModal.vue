@@ -172,6 +172,9 @@
 
 <script setup>
 import { reactive, watch } from 'vue';
+import { useModalStore } from '@/stores/modal';
+
+const modalStore = useModalStore();
 
 const props = defineProps({
   show: Boolean,
@@ -265,21 +268,21 @@ const removeTime = (index) => {
   form.notificationTimes.splice(index, 1);
 };
 
-const submit = () => {
+const submit = async () => {
   if (!form.medicineName.trim()) {
-    alert('약 이름을 입력해주세요.');
+    await modalStore.openAlert('약 이름을 입력해주세요.');
     return;
   }
   if (!form.startDate) {
-    alert('복용 시작일을 입력해주세요.');
+    await modalStore.openAlert('복용 시작일을 입력해주세요.');
     return;
   }
   if (!form.isLifetime && !form.endDate) {
-    alert('복용 종료일을 입력해주세요.');
+    await modalStore.openAlert('복용 종료일을 입력해주세요.');
     return;
   }
   if (form.cycleType === 'WEEKLY' && form.daysOfWeek === 0) {
-    alert('요일을 하나 이상 선택해주세요.');
+    await modalStore.openAlert('요일을 하나 이상 선택해주세요.');
     return;
   }
   

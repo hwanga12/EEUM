@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.ssafy.eeum.domain.notification.dto.NotificationTestRequestDto;
 import org.ssafy.eeum.domain.notification.service.NotificationService;
 
+import org.ssafy.eeum.global.auth.model.CustomUserDetails;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import lombok.extern.slf4j.Slf4j;
 
 @Tag(name = "notifications", description = "알림 관리")
@@ -50,25 +52,6 @@ public class NotificationController {
         return ResponseEntity.ok("알림이 읽음 처리되었습니다.");
     }
 
-    @Operation(summary = "알림 정보 조회", description = "알림 ID로 알림 정보를 조회합니다.")
-    @org.springframework.web.bind.annotation.GetMapping("/{notificationId}")
-    public ResponseEntity<NotificationInfoDto> getNotificationInfo(@org.springframework.web.bind.annotation.PathVariable Long notificationId) {
-        log.info("Fetching notification info for ID: {}", notificationId);
-        NotificationInfoDto info = notificationService.getNotificationInfo(notificationId);
-        return ResponseEntity.ok(info);
-    }
-
-    // DTO for notification info response
-    @lombok.Data
-    @lombok.Builder
-    public static class NotificationInfoDto {
-        private Long id;
-        private Integer familyId;
-        private String type;
-        private String title;
-        private String message;
-    }
-
     @Operation(summary = "낙상 감지 테스트", description = "낙상 이벤트를 발생시켜 우선순위에 따른 순차 발송을 테스트합니다.")
     @PostMapping("/fall-test/{familyId}")
     public ResponseEntity<String> triggerFallDetection(@org.springframework.web.bind.annotation.PathVariable Integer familyId) {
@@ -85,9 +68,31 @@ public class NotificationController {
         return ResponseEntity.ok("IoT 이벤트가 발생했습니다 (" + requestDto.getType() + "). 서버 로그와 알림을 확인하세요.");
     }
 
+    @Operation(summary = "그룹 알림 이력 조회", description = "특정 그룹의 모든 알림을 조회합니다. 읽음/안읽음 상태 포함.")
+    @org.springframework.web.bind.annotation.GetMapping("/families/{familyId}/history")
+    public ResponseEntity<java.util.List<NotificationHistoryDto>> getNotificationHistory(
+            @org.springframework.web.bind.annotation.PathVariable Integer familyId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Integer userId = userDetails.getId();
+        log.info("Fetching notification history for familyId: {}, userId: {}", familyId, userId);
+        java.util.List<NotificationHistoryDto> history = notificationService.getNotificationHistory(familyId, userId);
+        return ResponseEntity.ok(history);
+    }
+
     // DTO 내부 클래스 (간편함을 위해)
     @lombok.Data
     public static class IotTestRequestDto {
         private String type; // "OUTING" or "RETURN"
+    }
+
+    @lombok.Data
+    @lombok.Builder
+    public static class NotificationHistoryDto {
+        private Long id;
+        private String title;
+        private String message;
+        private String type;
+        private java.time.LocalDateTime createdAt;
+        private boolean isRead;
     }
 }

@@ -102,10 +102,12 @@ import { ref, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import ConfirmModal from '@/components/common/ConfirmModal.vue';
+import { useModalStore } from '@/stores/modal';
 
 const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
+const modalStore = useModalStore();
 const activeTab = ref('home');
 const showMenu = ref(false);
 const showLogoutModal = ref(false);
@@ -158,12 +160,11 @@ const setActive = (tab) => {
           router.push(`/families/${familyId}/messages`);
         } else {
           console.error('No familyId found in user profile or storage');
-          alert('가족 정보를 찾을 수 없습니다.');
+          modalStore.openAlert('가족 정보를 찾을 수 없습니다.');
         }
       }
   } else if (tab !== 'home') {
      // Mock navigation feedback
-     // alert(`Navigating to ${tab}...`); 
   }
 };
 
@@ -184,7 +185,7 @@ const navigateTo = (type) => {
     if (familyId) {
       router.push(`/families/${familyId}/medications`);
     } else {
-      alert('가족 정보를 찾을 수 없습니다.');
+      modalStore.openAlert('가족 정보를 찾을 수 없습니다.');
     }
   }
 };

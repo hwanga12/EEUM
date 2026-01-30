@@ -205,6 +205,9 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
 import MedicationAddModal from './group-setup/MedicationAddModal.vue';
+import { useModalStore } from '@/stores/modal';
+
+const modalStore = useModalStore();
 
 const route = useRoute();
 const router = useRouter();
@@ -304,7 +307,7 @@ const fetchMedications = async () => {
         medications.value = response.data;
     } catch (error) {
         console.error('Failed to fetch medications:', error);
-        alert('복약 정보를 불러오는데 실패했습니다.');
+        await modalStore.openAlert('복약 정보를 불러오는데 실패했습니다.');
     } finally {
         isLoading.value = false;
     }
@@ -340,12 +343,12 @@ const handleAddMedication = async (medData) => {
         }];
 
         await api.post(`/families/${familyId}/medications`, payload);
-        alert('추가되었습니다.');
+        await modalStore.openAlert('추가되었습니다.');
         closeModal();
         fetchMedications(); // Refresh list
     } catch (error) {
         console.error('Failed to add medication:', error);
-        alert('추가에 실패했습니다.');
+        await modalStore.openAlert('추가에 실패했습니다.');
     }
 };
 

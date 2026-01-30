@@ -97,10 +97,12 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { scheduleService } from '@/services/scheduleService';
 import { useFamilyStore } from '@/stores/family';
+import { useModalStore } from '@/stores/modal';
 
 const route = useRoute();
 const router = useRouter();
 const familyStore = useFamilyStore();
+const modalStore = useModalStore();
 
 const schedule = ref(null);
 const showDeleteModal = ref(false);
@@ -171,15 +173,15 @@ const handleDelete = async (deleteAll = false) => {
         router.back();
     } catch (error) {
         console.error("Delete failed", error);
-        alert("삭제 실패");
+        await modalStore.openAlert("삭제 실패");
     }
 };
 
-const confirmDelete = () => {
+const confirmDelete = async () => {
     if (schedule.value?.repeatType === 'YEARLY' || schedule.value?.repeatType === 'MONTHLY' || schedule.value?.repeatType === 'WEEKLY') {
         showDeleteModal.value = true;
     } else {
-        if(confirm('정말 삭제하시겠습니까?')) {
+        if(await modalStore.openConfirm('정말 삭제하시겠습니까?')) {
             handleDelete(false);
         }
     }

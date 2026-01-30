@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from './stores/user'
+import GlobalConfirmModal from '@/components/common/GlobalConfirmModal.vue'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -205,6 +206,7 @@ onMounted(async () => {
 <template>
   <div id="app">
     <router-view />
+    <GlobalConfirmModal />
   </div>
 </template>
 

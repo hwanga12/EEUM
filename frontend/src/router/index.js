@@ -13,8 +13,10 @@ import GroupSetupStep1 from '../views/group-setup/Step1GroupName.vue';
 import GroupSetupStep2 from '../views/group-setup/Step2HealthInfo.vue';
 import GroupSetupStep3 from '../views/group-setup/Step3EmergencyContact.vue';
 import GroupSetupStep4 from '../views/group-setup/Step4Medication.vue';
+
 import MedicationListView from '../views/MedicationListView.vue';
 import MedicationDetailView from '../views/MedicationDetailView.vue';
+import HealthDetailView from '../views/HealthDetailView.vue';
 import MessageListView from '../views/MessageList.vue';
 
 import OnboardingView from '../views/Onboarding.vue';
@@ -162,6 +164,11 @@ const routes = [
     path: '/families/:familyId/calendar/detail',
     name: 'DetailSchedule',
     component: () => import('../views/DetailSchedule.vue'),
+  },
+  {
+    path: '/health-detail',
+    name: 'HealthDetail',
+    component: HealthDetailView,
   },
 ];
 

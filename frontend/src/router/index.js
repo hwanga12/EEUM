@@ -1,6 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 import MyProfileView from '../views/MyProfileView.vue';
-import ActivityView from '../views/ActivityView.vue';
 import HomePage from '../views/HomePage.vue';
 import VoiceRegistration from '../views/VoiceRegistration.vue';
 import EmergencyAlert from '../views/EmergencyAlert.vue';
@@ -173,11 +172,6 @@ const routes = [
     path: '/families/:familyId/emergency',
     name: 'EmergencyDetail',
     component: EmergencyAlert,
-  },
-  {
-    path: '/families/:familyId/activity',
-    name: 'ActivityFeed',
-    component: ActivityView,
   },
 ];
 

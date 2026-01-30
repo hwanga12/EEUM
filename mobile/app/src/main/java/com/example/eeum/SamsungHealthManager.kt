@@ -77,7 +77,13 @@ class SamsungHealthManager(private val context: Context) {
             val latestData = response.dataList.firstOrNull()
 
             if (latestData != null) {
-                val jsonResult = Gson().toJson(latestData)
+                // 🔥 수정됨: Gson으로 전체 객체를 직렬화하지 않고, 필요한 값(heart_rate)만 추출
+                // 로그에서 확인된 키 값 keys: [heart_rate, heart_beat_count, binning_data, ...]
+                // 안전하게 "heart_rate" 키로 값을 가져옵니다. (없으면 기본값 -1)
+                val heartRateValue = latestData.getValue(DataType.HeartRateType.HEART_RATE)
+
+                val resultMap = mapOf("heart_rate" to heartRateValue)
+                val jsonResult = Gson().toJson(resultMap)
                 android.util.Log.d("SHD_DEBUG", "데이터 조회 성공: $jsonResult")
                 jsonResult
             } else {

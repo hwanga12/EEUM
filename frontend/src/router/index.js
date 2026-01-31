@@ -25,7 +25,11 @@ import { useUserStore } from '@/stores/user';
 const routes = [
   {
     path: '/',
-    redirect: '/onboarding', // 처음 접속 시 온보딩 페이지로 보냄
+    redirect: () => {
+      // 토큰이 있으면 홈으로, 없으면 온보딩으로
+      const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+      return token ? '/home' : '/onboarding';
+    }
   },
   {
     path: '/onboarding',
@@ -76,6 +80,11 @@ const routes = [
     path: '/families/:familyId/messages',
     name: 'FamilyMessages',
     component: MessageListView,
+  },
+  {
+    path: '/families/:familyId/notifications',
+    name: 'NotificationList',
+    component: () => import('../views/NotificationListView.vue'),
   },
 
   {

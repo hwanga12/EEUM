@@ -690,8 +690,11 @@ onMounted(async () => {
   }
 
   if (familyId.value) {
-    await fetchMessages();
-    await fetchFamilyDetails();
+    // API 호출 병렬 처리로 속도 개선
+    await Promise.all([
+      fetchMessages(),
+      fetchFamilyDetails()
+    ]);
   }
 })
 </script>

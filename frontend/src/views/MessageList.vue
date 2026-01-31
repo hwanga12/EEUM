@@ -114,43 +114,41 @@
 
 
       <!-- Message Detail Modal -->
-      <transition name="fade">
-        <div 
-          v-if="selectedMessage"
-          class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4"
-          @click.self="closeMessageDetail"
-        >
-          <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto">
-            <!-- Detail Header -->
-            <div class="flex items-center justify-between p-4 border-b border-gray-200">
-              <div class="flex items-center gap-3">
-                <img 
-                  :src="getFullImageUrl(selectedMessage.senderProfileImage, selectedMessage.senderName)"
-                  :alt="selectedMessage.senderName || 'User'"
-                  class="w-12 h-12 rounded-full object-cover"
-                />
-                <div>
-                  <h3 class="font-bold text-gray-800">{{ selectedMessage.senderRelationship || selectedMessage.senderName }}</h3>
-                  <p class="text-xs text-gray-500">{{ formatFullDate(selectedMessage.createdAt) }}</p>
-                </div>
+      <div 
+        v-if="selectedMessage"
+        class="fixed inset-0 bg-black/50 z-[99999] flex items-center justify-center p-4"
+        @click.self="closeMessageDetail"
+      >
+        <div class="bg-white rounded-3xl shadow-2xl w-[85%] max-w-md max-h-[350px] flex flex-col min-h-[200px]">
+          <!-- Detail Header -->
+          <div class="flex-none flex items-center justify-between p-4 border-b border-gray-200">
+            <div class="flex items-center gap-3">
+              <img 
+                :src="getFullImageUrl(selectedMessage.senderProfileImage, selectedMessage.senderName)"
+                :alt="selectedMessage.senderName || 'User'"
+                class="w-12 h-12 rounded-full object-cover"
+              />
+              <div>
+                <h3 class="font-bold text-gray-800">{{ selectedMessage.senderRelationship || selectedMessage.senderName }}</h3>
+                <p class="text-xs text-gray-500">{{ formatFullDate(selectedMessage.createdAt) }}</p>
               </div>
-              <button 
-                @click="closeMessageDetail"
-                class="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
             </div>
+            <button 
+              @click="closeMessageDetail"
+              class="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
 
-            <!-- Detail Content -->
-            <div class="p-6">
-              <p class="text-base text-gray-800 leading-relaxed whitespace-pre-wrap break-words">{{ selectedMessage.content }}</p>
-            </div>
+          <!-- Detail Content -->
+          <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            <p class="text-base text-gray-800 leading-relaxed whitespace-pre-wrap break-words">{{ selectedMessage.content }}</p>
           </div>
         </div>
-      </transition>
+      </div>
 
 
       <!-- Floating Action Button (FAB) -->
@@ -547,6 +545,8 @@ const sendMessage = async () => {
 }
 
 const openMessageDetail = (message) => {
+  console.log("MessageList: Open Detail", message);
+
   selectedMessage.value = message
 }
 
@@ -733,5 +733,22 @@ onMounted(async () => {
   line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+</style>
+
+<style scoped>
+/* Custom Scrollbar for Message Detail */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 20px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
 }
 </style>

@@ -154,12 +154,9 @@
       <!-- Floating Action Button (FAB) -->
       <button 
         @click="openMessageModal"
-        class="fixed right-4 bottom-28 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-transform hover:scale-105 active:scale-95 z-40"
-        style="background: linear-gradient(135deg, var(--color-primary) 0%, #ff8a65 100%);"
+        class="fixed bottom-32 right-6 z-30 bg-primary text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-primary/30 active:scale-95 transition-transform"
       >
-         <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
-         </svg>
+        <span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 0, 'wght' 600">add</span>
       </button>
 
       <!-- Message Composer Modal: Scrollable Bottom Sheet with Sticky Header -->
@@ -754,5 +751,11 @@ onMounted(async () => {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #9ca3af;
+}
+
+/* Match CalendarPage icon style */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-size: 28px;
 }
 </style>

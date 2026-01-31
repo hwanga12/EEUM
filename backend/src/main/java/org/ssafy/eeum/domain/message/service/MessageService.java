@@ -77,7 +77,11 @@ public class MessageService {
                         log.error("IoT Sync Notification failed: {}", e.getMessage());
                 }
 
-                return toDto(saved);
+                // Auth check already retrieved the supporter (sender's supporter)
+                Supporter senderSupporter = supporterRepository.findByUserAndFamily(sender, group)
+                        .orElseThrow(() -> new CustomException(ErrorCode.FORBIDDEN_FAMILY_ACCESS));
+
+                return toDto(saved, senderSupporter);
         }
 
         public List<MessageResponseDto> getMessages(Integer groupId, Integer requesterUserId) {
@@ -90,10 +94,20 @@ public class MessageService {
                 supporterRepository.findByUserAndFamily(requester, group)
                                 .orElseThrow(() -> new CustomException(ErrorCode.FORBIDDEN_FAMILY_ACCESS));
 
-                return messageRepository.findAllByGroupAndDeletedAtIsNullOrderByCreatedAtAsc(group)
-                                .stream()
-                                .map(this::toDto)
-                                .toList();
+                List<Message> messages = messageRepository.findAllByGroupAndDeletedAtIsNullOrderByCreatedAtAsc(group);
+                List<Supporter> supporters = supporterRepository.findAllByFamily(group);
+                
+                // Map: UserId -> Supporter
+                java.util.Map<Integer, Supporter> supporterMap = supporters.stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                s -> s.getUser().getId(),
+                                s -> s,
+                                (existing, replacement) -> existing
+                        ));
+
+                return messages.stream()
+                        .map(msg -> toDto(msg, supporterMap.get(msg.getSender().getId())))
+                        .toList();
         }
 
         @Transactional
@@ -115,7 +129,12 @@ public class MessageService {
                 }
 
                 message.markRead();
-                return toDto(message);
+                
+                Supporter senderSupporter = supporterRepository
+                        .findByUserAndFamily(message.getSender(), group)
+                        .orElse(null);
+
+                return toDto(message, senderSupporter);
         }
 
         @Transactional
@@ -176,11 +195,7 @@ public class MessageService {
                                 .build();
         }
 
-        private MessageResponseDto toDto(Message message) {
-                Supporter senderSupporter = supporterRepository
-                                .findByUserAndFamily(message.getSender(), message.getGroup())
-                                .orElse(null);
-
+        private MessageResponseDto toDto(Message message, Supporter senderSupporter) {
                 String senderRelationship = null;
                 String senderRole = null;
                 if (senderSupporter != null) {

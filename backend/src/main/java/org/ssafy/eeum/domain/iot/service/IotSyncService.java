@@ -7,6 +7,7 @@ import org.ssafy.eeum.domain.album.entity.MediaAsset;
 import org.ssafy.eeum.domain.album.repository.AlbumRepository;
 import org.ssafy.eeum.domain.album.repository.MediaLogRepository;
 
+import org.ssafy.eeum.domain.family.repository.FamilyRepository;
 import org.ssafy.eeum.domain.iot.dto.IotSyncDto;
 import org.ssafy.eeum.domain.iot.entity.ActionType;
 import org.ssafy.eeum.domain.iot.entity.IotDevice;
@@ -38,15 +39,13 @@ public class IotSyncService {
     private final MessageRepository messageRepository;
     private final S3Service s3Service;
     private final org.ssafy.eeum.global.infra.redis.RedisService redisService;
+    private final FamilyRepository familyRepository;
 
-    public IotSyncDto getSyncData(String serialNumber, String kind, Integer lastLogId) {
-        IotDevice device = iotDeviceRepository.findBySerialNumber(serialNumber)
-                .orElseThrow(() -> new CustomException(ErrorCode.ENTITY_NOT_FOUND));
+    public IotSyncDto getSyncData(Integer familyId, String kind) {
+        org.ssafy.eeum.domain.family.entity.Family family = familyRepository.findById(familyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.FAMILY_NOT_FOUND));
 
-        Integer familyId = device.getFamily().getId();
-        if (lastLogId == null) {
-            lastLogId = 0;
-        }
+        Integer lastLogId = "image".equals(kind) ? family.getLastMediaLogId() : family.getLastVoiceLogId();
 
         List<Integer> deletedIds = new java.util.ArrayList<>();
         Map<Integer, Integer> addedMap = new HashMap<>();

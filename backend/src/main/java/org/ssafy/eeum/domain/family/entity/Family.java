@@ -71,6 +71,7 @@ public class Family {
 
     public void updateStreamingUrl(String streamingUrl) {
         this.streamingUrl = streamingUrl;
+    }
 
     public void updateLastMediaLogId(Integer logId) {
         this.lastMediaLogId = logId;
@@ -78,6 +79,5 @@ public class Family {
 
     public void updateLastVoiceLogId(Integer logId) {
         this.lastVoiceLogId = logId;
-
     }
 }

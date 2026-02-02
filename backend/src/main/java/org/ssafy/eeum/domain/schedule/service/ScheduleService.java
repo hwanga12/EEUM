@@ -82,8 +82,7 @@ public class ScheduleService {
             // 1. 해당 날짜에 예외(수정/삭제) 일정이 있는지 확인
             Optional<Schedule> exceptionSchedule = scheduleRepository.findAll().stream()
                     .filter(s -> s.getParentId() != null && s.getParentId().equals(parentId)
-                            && s.getStartAt() != null && s.getStartAt().toLocalDate().equals(targetDate)
-                            && s.getDeletedAt() == null)
+                            && s.getStartAt() != null && s.getStartAt().toLocalDate().equals(targetDate))
                     .findFirst();
 
             if (exceptionSchedule.isPresent()) {
@@ -358,8 +357,7 @@ public class ScheduleService {
 
             Schedule schedule = scheduleRepository.findAll().stream()
                     .filter(s -> s.getParentId() != null && s.getParentId().equals(parentId)
-                            && s.getStartAt() != null && s.getStartAt().toLocalDate().equals(targetDate)
-                            && s.getDeletedAt() == null)
+                            && s.getStartAt() != null && s.getStartAt().toLocalDate().equals(targetDate))
                     .findFirst()
                     .orElseGet(() -> {
                         Schedule parent = scheduleRepository.findById(parentId)

@@ -98,4 +98,13 @@ public class VoiceController {
                 voiceService.updateSampleNickname(userDetails.getId(), sampleId, nickname);
                 return RestApiResponse.success("음성 샘플의 별명이 성공적으로 수정되었습니다.");
         }
+
+        @SwaggerApiSpec(summary = "음성 샘플 삭제", description = "음성 샘플을 삭제(Soft Delete)합니다. 단, 대표 샘플로 설정된 경우 삭제할 수 없습니다.", successMessage = "삭제 성공")
+        @DeleteMapping("/samples/{sampleId}")
+        public RestApiResponse<Void> deleteSample(
+                        @AuthenticationPrincipal CustomUserDetails userDetails,
+                        @PathVariable Integer sampleId) {
+                voiceService.deleteSample(userDetails.getId(), sampleId);
+                return RestApiResponse.success("음성 샘플이 성공적으로 삭제되었습니다.");
+        }
 }

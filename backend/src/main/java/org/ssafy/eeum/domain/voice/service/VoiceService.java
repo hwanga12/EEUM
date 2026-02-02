@@ -124,6 +124,26 @@ public class VoiceService {
         sample.updateNickname(nickname);
     }
 
+    // 3-4. 음성 샘플 삭제 (Hard Delete)
+    @Transactional
+    public void deleteSample(Integer userId, Integer sampleId) {
+        VoiceSample sample = sampleRepository.findById(sampleId)
+                .orElseThrow(() -> new CustomException(ErrorCode.VOICE_SAMPLE_NOT_FOUND));
+
+        if (!sample.getUser().getId().equals(userId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN_FAMILY_ACCESS);
+        }
+
+        // 대표 샘플인지 확인
+        VoiceModel model = modelRepository.findByUserId(userId).orElse(null);
+        if (model != null && model.getRepresentativeSample() != null &&
+                model.getRepresentativeSample().getId().equals(sampleId)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE); // 대표 샘플은 삭제 불가
+        }
+
+        sampleRepository.delete(sample);
+    }
+
     // 4. TTS 생성 (URL 반환) - 독립 트랜잭션 설정
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public String createTtsUrl(Integer userId, String text) {
@@ -148,7 +168,7 @@ public class VoiceService {
                 throw new CustomException(ErrorCode.VOICE_SAMPLE_NOT_FOUND);
             }
             referenceSample = samples.get(0);
-            log.debug("대표 샘플이 설정되지 않아 가장 최근 샘플(ID: {})을 사용합니다.", referenceSample.getId());
+            log.debug("대표 샘플이 설정되지 않았거나 삭제되어 가장 최근 샘플(ID: {})을 사용합니다.", referenceSample.getId());
         } else {
             log.debug("설정된 대표 샘플(ID: {})을 사용합니다.", referenceSample.getId());
         }

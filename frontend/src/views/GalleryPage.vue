@@ -55,7 +55,7 @@
           class="recent-swiper"
         >
           <swiper-slide v-for="(photo, index) in recentPhotos" :key="photo.photoId || index">
-            <div class="photo-card relative group overflow-hidden rounded-2xl bg-black/5">
+            <div @click="goToPhotoDetail(photo)" class="photo-card relative group overflow-hidden rounded-2xl bg-black/5 cursor-pointer">
               <!-- Blurred Background for Fill -->
               <img :src="photo.displayUrl" class="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-30" aria-hidden="true" />
               
@@ -121,7 +121,14 @@
     </button>
     <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleFileUpload" />
     
-    <BottomNav v-if="!isModalOpen" />
+    <ImagePreviewModal 
+      :is-open="showPreviewModal"
+      :image-src="previewUrl"
+      @close="handleUploadCancel"
+      @confirm="handleUploadConfirm"
+    />
+
+    <BottomNav v-if="!isModalOpen && !showPreviewModal" />
   </div>
 </template>
 
@@ -130,10 +137,12 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import MainHeader from '@/components/MainHeader.vue';
 import BottomNav from '@/components/layout/BottomNav.vue';
+import ImagePreviewModal from '@/components/gallery/ImagePreviewModal.vue';
 import { useFamilyStore } from '@/stores/family';
 import { useModalStore } from '@/stores/modal';
-import { getPhotos, uploadFile } from '@/services/albumService';
+import { getPhotos } from '@/services/albumService';
 import EeumDatePicker from '@/components/common/EeumDatePicker.vue';
+import { usePhotoUpload } from '@/composables/usePhotoUpload';
 
 // Swiper Imports
 import { Swiper, SwiperSlide } from 'swiper/vue';
@@ -147,13 +156,26 @@ const router = useRouter();
 const familyStore = useFamilyStore();
 const modalStore = useModalStore();
 const photos = ref([]);
-const fileInput = ref(null);
-const isUploading = ref(false);
 const isModalOpen = ref(false);
 
 const handleModalStateChange = (isOpen) => {
   isModalOpen.value = isOpen;
 };
+
+// Use Shared Upload Logic
+const {
+  fileInput,
+  previewUrl,
+  showPreviewModal,
+  isUploading,
+  triggerFileInput,
+  handleFileUpload,
+  handleUploadConfirm,
+  handleUploadCancel
+} = usePhotoUpload(async () => {
+    // Callback on success
+    await fetchAlbumPhotos();
+});
 
 const selectedDateProxy = computed({
     get: () => '',
@@ -286,8 +308,6 @@ const fetchAlbumPhotos = async () => {
     }
 };
 
-// ... (triggerFileInput same)
-
 const navigateToAlbum = (album) => {
   const query = {};
   if (album.id !== 'all' && album.uploaderName) {
@@ -301,30 +321,12 @@ const navigateToAlbum = (album) => {
   });
 };
 
-const triggerFileInput = () => {
-    fileInput.value.click();
+const goToPhotoDetail = (photo) => {
+    router.push({
+        name: 'PhotoDetail',
+        params: { photoId: photo.photoId || photo.id }
+    });
 };
-
-const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file || !familyStore.selectedFamily) return;
-
-    isUploading.value = true;
-    try {
-        await uploadFile(familyStore.selectedFamily.id, file);
-        // Refresh list
-        await fetchAlbumPhotos();
-        await modalStore.openAlert('사진이 업로드되었습니다.');
-    } catch (error) {
-        await modalStore.openAlert('사진 업로드에 실패했습니다.');
-        console.error(error);
-    } finally {
-        isUploading.value = false;
-        event.target.value = ''; // Reset input
-    }
-};
-
-
 
 onMounted(() => {
     if (familyStore.selectedFamily) {

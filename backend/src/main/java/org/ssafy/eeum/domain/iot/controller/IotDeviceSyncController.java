@@ -60,4 +60,14 @@ public class IotDeviceSyncController {
         IotAlbumSyncResponseDTO response = messageService.syncForIot(familyId);
         return RestApiResponse.success(response);
     }
+
+    @SwaggerApiSpec(summary = "[IoT] 실시간 스트리밍 URL 업데이트", description = "IoT 기기의 현재 실시간 스트리밍 접속 URL을 업데이트합니다.", successMessage = "스트리밍 URL 업데이트 성공")
+    @PutMapping("/streaming")
+    public RestApiResponse<Void> updateStreamingURL(
+            @AuthenticationPrincipal DeviceDetails deviceDetails,
+            @RequestBody org.ssafy.eeum.domain.iot.dto.IotStreamingUrlRequestDTO request) {
+        Integer familyId = deviceDetails.getGroupId();
+        iotDeviceService.updateStreamingUrl(familyId, request.getStreamingUrl());
+        return RestApiResponse.success(null);
+    }
 }

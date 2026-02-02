@@ -501,10 +501,10 @@ fun WebViewScreen(
 
                 // 로컬 개발 환경용 (PC의 IP 주소를 확인하여 수정해주세요)
                 //loadUrl("http://192.168.35.76:5173")
-                loadUrl("http://192.168.1.103:5173")
+                //loadUrl("http://70.12.246.146:5173")
 
                 // 배포 서버용
-                // loadUrl("https://i14a105.p.ssafy.io")
+                 loadUrl("https://i14a105.p.ssafy.io")
             }
         }
     )

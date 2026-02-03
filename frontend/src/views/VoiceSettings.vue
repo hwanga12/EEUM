@@ -27,12 +27,13 @@
         <!-- Sample Nodes -->
         <div v-for="sample in samples" :key="sample.id" class="flex flex-col items-center group">
             <!-- Knob/Button -->
-            <div class="relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer"
+            <div class="relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300"
                  :class="[
                     sample.id === representativeId ? 'ring-4 ring-primary ring-offset-4 ring-offset-slate-900 shadow-[0_0_30px_rgba(255,111,97,0.4)]' : 'hover:scale-105',
-                    isPlaying && currentAudio === sample.testAudioUrl ? 'scale-110 shadow-[0_0_40px_rgba(255,255,255,0.2)]' : ''
+                    isPlaying && currentAudio === sample.testAudioUrl ? 'scale-110 shadow-[0_0_40px_rgba(255,255,255,0.2)]' : '',
+                    !sample.testAudioUrl ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
                  ]"
-                 @click="handleSampleClick(sample)">
+                 @click="sample.testAudioUrl ? handleSampleClick(sample) : null">
                 
                 <!-- Background Gradient -->
                 <div class="absolute inset-0 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 shadow-inner border border-slate-600/50"></div>
@@ -42,11 +43,17 @@
 
                 <!-- Icon/Status -->
                 <div class="relative z-10 flex flex-col items-center justify-center">
-                    <span class="material-symbols-outlined text-4xl text-white/90 drop-shadow-md transition-all"
-                          :class="isPlaying && currentAudio === sample.testAudioUrl ? 'text-primary scale-110' : ''">
-                        {{ isPlaying && currentAudio === sample.testAudioUrl ? 'equalizer' : 'graphic_eq' }}
-                    </span>
-                    <span v-if="sample.id === representativeId" class="text-[10px] font-bold text-primary mt-1 uppercase tracking-wider">Main</span>
+                    <template v-if="!sample.testAudioUrl">
+                        <span class="material-symbols-outlined text-4xl text-white/50 animate-spin">progress_activity</span>
+                        <span class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">제작중</span>
+                    </template>
+                    <template v-else>
+                        <span class="material-symbols-outlined text-4xl text-white/90 drop-shadow-md transition-all"
+                              :class="isPlaying && currentAudio === sample.testAudioUrl ? 'text-primary scale-110' : ''">
+                            {{ isPlaying && currentAudio === sample.testAudioUrl ? 'equalizer' : 'graphic_eq' }}
+                        </span>
+                        <span v-if="sample.id === representativeId" class="text-[10px] font-bold text-primary mt-1 uppercase tracking-wider">Main</span>
+                    </template>
                 </div>
 
                 <!-- Playing Ripple Effect -->
@@ -161,22 +168,24 @@ const loadData = async () => {
     try {
         isLoading.value = true;
         
-        // 1. Get Status for Representative ID
+        // 1. Get Status (includes samples and rep ID)
         const statusData = await voiceService.getVoiceStatus();
         representativeId.value = statusData.representativeSampleId;
         
-        // 2. Get List with URLs
-        let listWithUrls = await voiceService.getTestAudioList();
+        // Use samples from status directly
+        // Backend returns samples array in status
+        const fetchedSamples = statusData.samples || [];
         
-        // Check generation need
-        const needsGeneration = listWithUrls.some(s => !s.testAudioUrl);
-        if (needsGeneration && listWithUrls.length > 0) {
-            await voiceService.generateTestAudio();
-            // Wait slightly or retry logic? Assuming fast enough for demo
-            listWithUrls = await voiceService.getTestAudioList();
+        // Check if any sample lacks testAudioUrl, if so trigger generation in background
+        // but display list immediately
+        const needsGeneration = fetchedSamples.some(s => !s.testAudioUrl);
+        if (needsGeneration) {
+            console.log("Some samples missing audio, requesting generation...");
+            voiceService.generateTestAudio().catch(err => console.error("Generation trigger failed", err));
+            // We don't await loop here, just show "Processing" state
         }
         
-        samples.value = listWithUrls;
+        samples.value = fetchedSamples;
     } catch (error) {
         console.error("Failed to load voice settings:", error);
     } finally {

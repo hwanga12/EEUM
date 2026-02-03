@@ -227,7 +227,9 @@ const handleModalStateChange = (isOpen) => {
 };
 // 창민추가
 const { selectedFamily } = storeToRefs(familyStore);
-const familyId = parseInt(route.params.familyId);
+const familyId = ref(parseInt(route.params.familyId));
+
+
 
 const locations = [
   { label: '거실', value: 'LIVING_ROOM' },
@@ -312,16 +314,26 @@ const expiryText = computed(() => {
 
 // Methods
 const generateQR = async () => {
+  console.log('[QR] Current familyId.value:', familyId.value);
+  if (!familyId.value || isNaN(familyId.value)) {
+    alert('가족 ID가 유효하지 않습니다. 페이지를 새로고침해 주세요.');
+    return;
+  }
   isGenerating.value = true;
   try {
     const response = await generatePairingCode(familyId.value);
-    qrCode.value = response.data;
+    // 서버 응답 구조가 { data: { ... } } 형태일 경우와 아닐 경우 모두 대응
+    const qrData = response.data || response;
+    
+    console.log('[QR Response Data]', qrData);
+    
+    qrCode.value = qrData;
     remainingTime.value = qrCode.value.expiresIn;
     
     // Wait for DOM update
     await nextTick();
     
-    if (qrCanvas.value) {
+    if (qrCanvas.value && qrCode.value.qrContent) {
       await QRCode.toCanvas(qrCanvas.value, qrCode.value.qrContent, {
         width: 224, // 56 * 4 (Tailwind w-56 is 14rem = 224px)
         margin: 2,
@@ -331,12 +343,14 @@ const generateQR = async () => {
         },
         errorCorrectionLevel: 'H'
       });
+    } else {
+      throw new Error('QR 데이터(qrContent)가 응답에 포함되어 있지 않습니다.');
     }
 
     startExpiryTimer();
   } catch (error) {
     console.error('Failed to generate QR code:', error);
-    alert('QR 코드 생성에 실패했습니다.');
+    alert(`QR 코드 생성 실패: ${error.message || JSON.stringify(error)}`);
   } finally {
     isGenerating.value = false;
   }
@@ -366,6 +380,10 @@ const clearExpiryTimer = () => {
 };
 
 const loadDevices = async () => {
+  if (!familyId.value || isNaN(familyId.value)) {
+    console.warn('[loadDevices] Skipping due to invalid familyId:', familyId.value);
+    return;
+  }
   isLoadingDevices.value = true;
   try {
     const response = await getIotDevices(familyId.value);

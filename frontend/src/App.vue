@@ -8,6 +8,7 @@ import { useNotificationStore } from './stores/notification'
 import GlobalConfirmModal from '@/components/common/GlobalConfirmModal.vue'
 import GlobalEmergencyModal from '@/components/common/GlobalEmergencyModal.vue'
 import GlobalNotificationModal from '@/components/common/GlobalNotificationModal.vue'
+import LoadingOverlay from '@/components/common/LoadingOverlay.vue'
 
 const userStore = useUserStore()
 const emergencyStore = useEmergencyStore()
@@ -366,6 +367,7 @@ onMounted(async () => {
     <GlobalConfirmModal />
     <GlobalEmergencyModal />
     <GlobalNotificationModal />
+    <LoadingOverlay />
   </div>
 </template>
 

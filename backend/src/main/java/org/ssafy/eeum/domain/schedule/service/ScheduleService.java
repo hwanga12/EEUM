@@ -567,11 +567,13 @@ public class ScheduleService {
         }
     }
 
+    @Transactional
     @Scheduled(cron = "0 0 8 * * *")
     public void sendDailyScheduleAlarm() {
         sendScheduleAlarmForDate(LocalDate.now(), "오늘");
     }
 
+    @Transactional
     @Scheduled(cron = "0 0 20 * * *")
     public void sendNextDayScheduleAlarm() {
         sendScheduleAlarmForDate(LocalDate.now().plusDays(1), "내일");

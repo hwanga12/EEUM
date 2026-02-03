@@ -56,7 +56,7 @@
             </button>
         </div>
 
-        <button v-if="completedCount >= 5 || serverSampleCount >= 5" 
+        <button v-if="completedCount >= 1" 
                 @click="goToSettings"
                 class="w-full py-4 mt-8 rounded-2xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/30 active:scale-95 transition-all flex items-center justify-center gap-2">
             <span>목소리 설정으로 이동</span>
@@ -185,7 +185,7 @@ const fetchScripts = async () => {
                      }
                      
                      if (matchedScriptId) {
-                         const script = voiceSamples.value.find(s => s.id === matchedScriptId);
+                         const script = voiceSamples.value.find(s => String(s.id) === String(matchedScriptId));
                          if (script) {
                              script.isRecorded = true;
                          }

@@ -22,6 +22,8 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_BASE_URL || 'https://i14a105.p.ssafy.io',
           changeOrigin: true,
           secure: false,
+          timeout: 300000,
+          proxyTimeout: 300000,
         },
       },
     }

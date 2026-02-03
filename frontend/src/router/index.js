@@ -157,6 +157,11 @@ const routes = [
     component: VoiceRegistration,
   },
   {
+    path: '/voice-settings',
+    name: 'VoiceSettings',
+    component: () => import('../views/VoiceSettings.vue'),
+  },
+  {
     path: '/families/:familyId/calendar',
     name: 'CalendarPage',
     component: () => import('../views/CalendarPage.vue'),

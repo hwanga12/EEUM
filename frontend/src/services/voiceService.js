@@ -14,11 +14,17 @@ export const getScripts = async () => {
  * @param {number} scriptId - 대본 ID
  * @returns {Promise<string>} Presigned URL
  */
-export const getPresignedUrl = async (scriptId) => {
+/**
+ * 음성 샘플 업로드용 Presigned URL 발급
+ * @param {number} scriptId - 대본 ID
+ * @param {string} extension - 파일 확장자 (예: wav, webm, mp4 ... default: wav)
+ * @returns {Promise<string>} Presigned URL
+ */
+export const getPresignedUrl = async (scriptId, extension = 'wav') => {
     const response = await apiClient.get('/voice/presigned-url', {
-        params: { scriptId },
+        params: { scriptId, extension },
     });
-    return response.data; // data가 문자열 URL 자체인지, 객체인지 확인 필요. 명세상 RestApiResponseString이라 data.data일 가능성 높음
+    return response.data;
 };
 
 /**
@@ -98,6 +104,7 @@ export const updateNickname = async (sampleId, nickname) => {
     });
 };
 
+// ... (skipping to uploadVoiceSample) ...
 
 /**
  * Helper: 전체 업로드 프로세스 진행
@@ -109,8 +116,20 @@ export const uploadVoiceSample = async (file, scriptId, durationSec) => {
     try {
         console.log(`Starting upload for script ${scriptId}, duration: ${durationSec}`);
 
+        // Determine extension from MIME type
+        // common mappings: audio/webm -> webm, audio/mp4 -> mp4, audio/wav -> wav
+        let extension = 'wav';
+        if (file.type) {
+            if (file.type.includes('webm')) extension = 'webm';
+            else if (file.type.includes('mp4')) extension = 'mp4';
+            else if (file.type.includes('ogg')) extension = 'ogg';
+            else if (file.type.includes('mpeg') || file.type.includes('mp3')) extension = 'mp3';
+            else if (file.type.includes('wav')) extension = 'wav';
+        }
+        console.log(`Detected MIME: ${file.type}, Extension: ${extension}`);
+
         // 1. Get Presigned URL
-        const presignedResponse = await getPresignedUrl(scriptId);
+        const presignedResponse = await getPresignedUrl(scriptId, extension);
         console.log("Raw Presigned Response:", presignedResponse);
 
         let fullPresignedUrl = "";
@@ -129,7 +148,6 @@ export const uploadVoiceSample = async (file, scriptId, durationSec) => {
             fullPresignedUrl = presignedResponse.message;
         } else {
             console.warn("Could not find string URL in response, checking if response object IS the wrapper but data is missing or different.");
-            // Last ditch: check if 'data' is the object itself? No, too ambiguous.
         }
 
         console.log("Extracted URL:", fullPresignedUrl);
@@ -153,14 +171,11 @@ export const uploadVoiceSample = async (file, scriptId, durationSec) => {
         console.log("Extracted samplePath:", samplePath);
 
         // 2. Upload to S3
-        // Backend expects 'audio/wav'. We set the content-type header to match the presigned URL signature if required.
-        // Even if the blob is webm, we label it as wav for S3 if the key ends in .wav
-        // Note: Actual conversion to WAV would require client-side processing (ffmpeg.wasm or recorder-js).
-        // For now, we try uploading the blob with the expected content type.
+        // Use the actual file type for Content-Type
         const uploadResponse = await fetch(fullPresignedUrl, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'audio/wav' // Forcing content type to match expected .wav extension
+                'Content-Type': file.type || 'application/octet-stream'
             },
             body: file
         });

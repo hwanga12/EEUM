@@ -16,8 +16,11 @@
           </div>
         </div>
       </div>
-      <div class="mt-4 text-center">
-        <h1 class="text-3xl font-bold text-slate-900">2월</h1>
+      <div class="mt-4 text-center relative flex justify-center items-center">
+        <span class="absolute left-0 top-1/2 -translate-y-1/2 text-lg font-bold text-slate-900 select-none">
+            {{ headerYear }}년
+        </span>
+        <h1 class="text-2xl font-bold text-slate-900">{{ headerDateText }}</h1>
       </div>
     </header>
     
@@ -228,6 +231,18 @@ const onTouchEnd = () => {
 
 const isEditMode = computed(() => !!route.query.id);
 const pageTitle = computed(() => isEditMode.value ? '일정 수정' : '일정 추가');
+
+const headerDateText = computed(() => {
+    if (!formData.value.startAtDate) return '';
+    const [y, m] = formData.value.startAtDate.split('-');
+    return `${parseInt(m)}월`;
+});
+
+const headerYear = computed(() => {
+    if (!formData.value.startAtDate) return '';
+    const [y, m] = formData.value.startAtDate.split('-');
+    return y;
+});
 
 const formData = ref({
     title: '',

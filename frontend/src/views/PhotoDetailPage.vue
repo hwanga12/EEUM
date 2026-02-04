@@ -128,6 +128,7 @@ import { useFamilyStore } from '@/stores/family';
 import { useModalStore } from '@/stores/modal';
 import { getPhotos, deletePhoto, updatePhoto } from '@/services/albumService';
 import { useUserStore } from '@/stores/user';
+import { useAlbumStore } from '@/stores/album';
 
 // Swiper Imports
 import { Swiper, SwiperSlide } from 'swiper/vue';
@@ -138,6 +139,7 @@ const router = useRouter();
 const familyStore = useFamilyStore();
 const modalStore = useModalStore();
 const userStore = useUserStore();
+const albumStore = useAlbumStore();
 
 const photo = ref(null);
 const allPhotos = ref([]);
@@ -175,29 +177,46 @@ const fetchPhotoDetail = async () => {
     }
 
     if (!familyStore.selectedFamily) return;
+    
+    const familyId = familyStore.selectedFamily.id;
+    const targetId = parseInt(route.params.photoId);
 
     try {
-        const response = await getPhotos(familyStore.selectedFamily.id);
+        // Try to use cached data first
+        const cached = albumStore.getCachedPhotos(familyId);
         let rawPhotos = [];
         
-        if (Array.isArray(response.data)) {
-            rawPhotos = response.data;
-        } else if (response.data && Array.isArray(response.data.data)) {
-            rawPhotos = response.data.data;
-        } else if (response.data && Array.isArray(response.data.result)) {
-            rawPhotos = response.data.result;
-        } else if (response.data && Array.isArray(response.data.content)) {
-            rawPhotos = response.data.content;
-        }
-
-        // Process URLs for all photos to allow navigation
-        allPhotos.value = rawPhotos.map(p => {
-            let url = p.storageUrl || p.imageUrl;
-            if (url && !url.startsWith('http')) {
-                url = S3_BASE_URL + url;
+        if (cached && cached.length > 0) {
+            // Use cached data - much faster!
+            rawPhotos = cached;
+        } else {
+            // Fetch from API only if no cache
+            const response = await getPhotos(familyId);
+            
+            if (Array.isArray(response.data)) {
+                rawPhotos = response.data;
+            } else if (response.data && Array.isArray(response.data.data)) {
+                rawPhotos = response.data.data;
+            } else if (response.data && Array.isArray(response.data.result)) {
+                rawPhotos = response.data.result;
+            } else if (response.data && Array.isArray(response.data.content)) {
+                rawPhotos = response.data.content;
             }
-            return { ...p, displayUrl: url };
-        });
+
+            // Process URLs for all photos
+            rawPhotos = rawPhotos.map(p => {
+                let url = p.storageUrl || p.imageUrl;
+                if (url && !url.startsWith('http')) {
+                    url = S3_BASE_URL + url;
+                }
+                return { ...p, displayUrl: url };
+            });
+            
+            // Cache the processed photos for future use
+            albumStore.setCachedPhotos(familyId, rawPhotos);
+        }
+        
+        allPhotos.value = rawPhotos;
 
         // Sort by takenAt descending (to match Gallery order usually)
         allPhotos.value.sort((a, b) => {
@@ -206,7 +225,6 @@ const fetchPhotoDetail = async () => {
             return dateB - dateA;
         });
 
-        const targetId = parseInt(route.params.photoId);
         currentIndex.value = allPhotos.value.findIndex(p => (p.photoId || p.id) === targetId);
 
         if (currentIndex.value !== -1) {

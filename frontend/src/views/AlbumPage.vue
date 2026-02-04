@@ -149,7 +149,7 @@ const {
   handleUploadCancel
 } = usePhotoUpload(async () => {
     // Callback on success
-    await fetchPhotos();
+    await fetchPhotos(true);
 });
 
 const filterDateLocal = computed({

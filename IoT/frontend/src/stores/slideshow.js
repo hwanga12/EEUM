@@ -64,12 +64,13 @@ export const useSlideshowStore = defineStore('slideshow', () => {
                     if (playlist.value.length > 20) {
                         playlist.value.shift()
                     }
-
-                    // If it's the only slide, show it immediately
-                    if (playlist.value.length === 1) {
-                        currentSlide.value = newSlide
-                    }
                 }
+
+                // Immediately show the new slide from SSE
+                currentSlide.value = newSlide
+
+                // Reset timer so we view this slide for the full duration
+                startSlideshowTimer()
 
             } catch (e) {
                 console.error('[SlideshowStore] Error parsing event data:', e)

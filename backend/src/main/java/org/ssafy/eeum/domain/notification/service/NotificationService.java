@@ -111,7 +111,14 @@ public class NotificationService {
 
                 NotificationDelivery delivery = notificationDeliveryRepository
                                 .findByUserAndNotification(user, notification)
-                                .orElseThrow(() -> new CustomException(ErrorCode.DELIVERY_NOT_FOUND));
+                                .orElseGet(() -> {
+                                        // Delivery가 없으면 새로 생성 (테스트 알림 등 예외 상황 대비)
+                                        return NotificationDelivery.builder()
+                                                        .notification(notification)
+                                                        .user(user)
+                                                        .channel("SYSTEM")
+                                                        .build();
+                                });
 
                 log.info("Found Delivery: ID={}, Current IsRead={}", delivery.getId(), delivery.isRead());
 
@@ -128,10 +135,17 @@ public class NotificationService {
                 java.util.List<Notification> notifications = notificationRepository
                                 .findByFamilyIdAndCreatedAtAfterOrderByCreatedAtDesc(familyId, oneWeekAgo);
 
+                User user = userRepository.findById(userId)
+                                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
                 return notifications.stream()
                                 .map(notification -> {
                                         String videoUrl = null;
                                         Double confidence = null;
+                                        boolean isRead = notificationDeliveryRepository
+                                                        .findByUserAndNotification(user, notification)
+                                                        .map(NotificationDelivery::isRead)
+                                                        .orElse(false);
 
                                         // EMERGENCY 타입이고 relatedId(FallEvent ID)가 있는 경우 추가 데이터 조회
                                         if ("EMERGENCY".equalsIgnoreCase(notification.getType())
@@ -161,6 +175,7 @@ public class NotificationService {
                                                         .type(notification.getType())
                                                         .relatedId(notification.getRelatedId())
                                                         .createdAt(notification.getCreatedAt())
+                                                        .isRead(isRead)
                                                         .videoUrl(videoUrl)
                                                         .confidence(confidence)
                                                         .build();

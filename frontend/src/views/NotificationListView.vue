@@ -58,9 +58,12 @@
           <div 
             v-for="noti in group.items" 
             :key="noti.id"
-            class="bg-white rounded-2xl p-5 shadow-sm border-l-4 flex items-start group active:scale-[0.98] transition-all relative overflow-hidden"
-            :class="[getBorderClass(noti.type), getBgClass(noti.type)]"
+            @click="handleNotiClick(noti)"
+            class="bg-white rounded-2xl p-5 shadow-sm border-l-4 flex items-start group active:scale-[0.98] transition-all relative overflow-hidden cursor-pointer"
+            :class="[getBorderClass(noti.type), getBgClass(noti.type), !noti.isRead ? 'ring-2 ring-gray-100 shadow-md' : 'opacity-80']"
           >
+            <!-- Unread Dot -->
+            <div v-if="!noti.isRead" class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse z-20"></div>
             <!-- Icon Based on Type -->
             <div :class="getIconContainerClass(noti.type)" class="flex-shrink-0 p-3 rounded-xl mr-4 shadow-sm z-10">
               <component :is="getIconComponent(noti.type)" class="h-6 w-6" />
@@ -89,10 +92,12 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useNotificationStore } from '@/stores/notification';
+import { useFamilyStore } from '@/stores/family';
 
 const router = useRouter();
 const route = useRoute();
 const notificationStore = useNotificationStore();
+const familyStore = useFamilyStore();
 
 const activeFilter = ref('ALL');
 
@@ -102,6 +107,29 @@ const filters = [
   { label: '🚶 활동 (외출/귀가)', value: 'ACTIVITY' },
   { label: '💬 기타 알림', value: 'OTHERS' }
 ];
+
+onMounted(async () => {
+  if (familyStore.families.length === 0) {
+    await familyStore.fetchFamilies();
+  }
+});
+
+const handleNotiClick = async (noti) => {
+  // 모달 데이터 준비 (기존 데이터 보존하며 추가 정보 입력)
+  const modalData = {
+    ...noti,
+    groupName: familyStore.selectedFamily?.name || '우리 가족',
+    dependentName: familyStore.selectedFamily?.dependentName || '피부양자'
+  };
+  
+  // 모달 열기
+  notificationStore.openModal(modalData);
+  
+  // 읽지 않은 알림이면 읽음 처리
+  if (!noti.isRead) {
+    await notificationStore.markAsRead(noti.id);
+  }
+};
 
 // 경로 파라미터(familyId)가 변경될 때마다 데이터를 새로 가져옵니다.
 // (컴포넌트가 재사용되는 경우 onMounted가 다시 호출되지 않기 때문)

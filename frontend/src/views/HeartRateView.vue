@@ -124,7 +124,6 @@ const startPrecesionMeasuring = async () => {
         // 1. 워치 측정 명령 전송 (Event ID 없음)
         if (familyStore.selectedFamily?.id) {
             await healthService.requestMeasurement(familyStore.selectedFamily.id);
-            console.log("Requested Measurement.");
         }
 
         // 2. 30초 카운트다운 시작
@@ -158,7 +157,6 @@ const finishMeasurement = async () => {
             minMetric.value = data.minRate || 0;
             maxMetric.value = data.maxRate || 0;
             avgCount.value = data.sampleCount || 0;
-            console.log("Measurement Result:", data);
         } else {
              console.warn("No data returned from latest measurement.");
         }

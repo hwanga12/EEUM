@@ -33,6 +33,7 @@ public class VoiceService {
     private final VoiceScriptRepository scriptRepository;
     private final VoiceSampleRepository sampleRepository;
     private final VoiceTaskRepository taskRepository;
+    private final org.ssafy.eeum.domain.auth.repository.UserRepository userRepository; // Inject UserRepository
     private final S3Service s3Service;
     private final VoiceAiClient voiceAiClient;
 
@@ -271,8 +272,11 @@ public class VoiceService {
             return audioUrl;
         }
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
         VoiceTask task = VoiceTask.builder()
-                .user(sampleRepository.findTopByUserIdOrderByCreatedAtDesc(userId).get().getUser()) // userId로 유저 조회
+                .user(user)
                 .type(VoiceTask.TaskType.MESSAGE)
                 .status(VoiceTask.TaskStatus.IN_QUEUE)
                 .jobId(audioUrl)
@@ -329,26 +333,41 @@ public class VoiceService {
         return voiceAiClient.generateTts(requestDto, webhookUrl);
     }
 
+    private static final String DEFAULT_SAMPLE_PATH = "samples/5/13930c43-32ad-4a56-ad35-b18bddf75744.webm";
+    private static final String DEFAULT_SAMPLE_TRANSCRIPT = "지금부터 자유대본 테스트를 하겠습니다. 아무 말이라도 해야 돼서 아무 말이라도 합니다.";
+
     private PythonTtsRequestDTO buildPythonTtsRequestDTO(Integer userId, String text) {
         List<VoiceSample> samples = sampleRepository.findAllByUserIdOrderByCreatedAtDesc(userId);
+
+        String refWavKey;
+        String refText;
+
         if (samples.isEmpty()) {
-            throw new CustomException(ErrorCode.VOICE_SAMPLE_NOT_FOUND);
-        }
-        User user = samples.get(0).getUser();
+            // Fallback to Default Voice Model (Hardcoded to prevent DB lookup failure)
+            refWavKey = DEFAULT_SAMPLE_PATH;
+            refText = DEFAULT_SAMPLE_TRANSCRIPT;
+            log.info("[TTS] User {} has no voice model. Using Default Sample (Fallback): {}", userId, refWavKey);
+        } else {
+            User user = samples.get(0).getUser();
+            VoiceSample referenceSample;
 
-        if (user.getRepresentativeSample() == null) {
-            user.updateRepresentativeSample(samples.get(0));
-            log.debug("User {}'s representative sample set to ID {}", userId, samples.get(0).getId());
-        }
+            if (user.getRepresentativeSample() == null) {
+                user.updateRepresentativeSample(samples.get(0));
+                log.debug("User {}'s representative sample set to ID {}", userId, samples.get(0).getId());
+                referenceSample = samples.get(0);
+            } else {
+                referenceSample = user.getRepresentativeSample();
+            }
 
-        VoiceSample referenceSample = user.getRepresentativeSample();
-        String refText = referenceSample.getVoiceScript() != null
-                ? referenceSample.getVoiceScript().getContent()
-                : referenceSample.getTranscript();
+            refWavKey = referenceSample.getSamplePath();
+            refText = referenceSample.getVoiceScript() != null
+                    ? referenceSample.getVoiceScript().getContent()
+                    : referenceSample.getTranscript();
+        }
 
         return PythonTtsRequestDTO.builder()
                 .userId(String.valueOf(userId))
-                .refWavKey(referenceSample.getSamplePath())
+                .refWavKey(refWavKey)
                 .refText(refText)
                 .text(text)
                 .build();

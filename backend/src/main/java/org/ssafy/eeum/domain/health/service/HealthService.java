@@ -41,35 +41,7 @@ public class HealthService {
                                 .orElseThrow(() -> new CustomException(ErrorCode.ENTITY_NOT_FOUND,
                                                 "가족 그룹을 찾을 수 없습니다."));
 
-                // 1. Process Real-time Heart Rate Notification (Priority)
-                requests.stream()
-                    .filter(req -> req.getAverageHeartRate() != null && req.getAverageHeartRate() > 0)
-                    .findFirst()
-                    .ifPresent(req -> {
-                        try {
-                            List<String> guardianTokens = supporterRepository.findAllByFamily(family).stream()
-                                .filter(s -> s.getRole() != org.ssafy.eeum.domain.family.entity.Supporter.Role.PATIENT)
-                                .map(s -> {
-                                    if (s.getUser() != null) return s.getUser().getFcmToken();
-                                    return null;
-                                })
-                                .filter(t -> t != null && !t.isEmpty())
-                                .toList();
-                            
-                            if (!guardianTokens.isEmpty()) {
-                                fcmService.sendMulticast(
-                                    guardianTokens,
-                                    "Heart Rate",
-                                    String.valueOf(req.getAverageHeartRate()),
-                                    "HR_UPDATE",
-                                    null,
-                                    null,
-                                    groupId
-                                );
-                            }
-                        } catch (Exception e) {
-                        }
-                    });
+
 
                 // 2. Save to DB in a separate transaction to avoid poisoning the main one
                 try {

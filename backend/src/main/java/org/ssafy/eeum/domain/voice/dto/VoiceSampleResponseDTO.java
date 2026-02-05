@@ -17,6 +17,9 @@ public class VoiceSampleResponseDTO {
     @Schema(description = "샘플 별명", example = "구수한 목소리")
     private String nickname;
 
+    @Schema(description = "관련 대본 ID (대본 녹음인 경우)", example = "1")
+    private Integer scriptId;
+
     @Schema(description = "샘플 생성일")
     private LocalDateTime createdAt;
 
@@ -30,6 +33,7 @@ public class VoiceSampleResponseDTO {
         return VoiceSampleResponseDTO.builder()
                 .id(sample.getId())
                 .nickname(sample.getNickname())
+                .scriptId(sample.getVoiceScript() != null ? sample.getVoiceScript().getId() : null)
                 .createdAt(sample.getCreatedAt())
                 .testAudioUrl(sample.getTestAudioPath())
                 .status(sample.getVoiceTask() != null ? sample.getVoiceTask().getStatus().name() : "COMPLETED")
@@ -47,6 +51,7 @@ public class VoiceSampleResponseDTO {
         return VoiceSampleResponseDTO.builder()
                 .id(sample.getId())
                 .nickname(sample.getNickname())
+                .scriptId(sample.getVoiceScript() != null ? sample.getVoiceScript().getId() : null)
                 .createdAt(sample.getCreatedAt())
                 .testAudioUrl(testAudioUrl)
                 .status(status)

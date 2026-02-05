@@ -28,8 +28,10 @@
           <div class="flex items-center gap-4 mb-2">
             <div class="w-16 h-16 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-sm shrink-0">
                <!-- Icon Switcher: Standard Heroicons Outline -->
+               <!-- EMERGENCY/FALL: ExclamationTriangle -->
+               <svg v-if="type === 'EMERGENCY' || type === 'FALL'" class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"></path></svg>
                <!-- OUTING: ArrowRightStartOnRectangle -->
-               <svg v-if="type === 'OUTING'" class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"></path></svg>
+               <svg v-else-if="type === 'OUTING'" class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"></path></svg>
                <!-- RETURN: HomeModern -->
                <svg v-else-if="type === 'RETURN'" class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"></path></svg>
                <!-- ACTIVITY: Bolt -->
@@ -48,6 +50,35 @@
       <!-- Content Area -->
       <div class="flex-1 overflow-y-auto bg-gray-50 pt-4 px-5 space-y-4 min-h-[100px]">
         
+        <!-- [NEW] Video Player for Fall Events -->
+        <div v-if="(type === 'EMERGENCY' || type === 'FALL') && videoUrl" class="bg-black rounded-2xl overflow-hidden shadow-lg border border-red-100 aspect-video relative group">
+            <video 
+                :src="videoUrl" 
+                controls 
+                autoplay
+                class="w-full h-full object-contain"
+            ></video>
+            <div class="absolute top-3 right-3 bg-red-600/90 text-white text-[10px] font-bold px-2 py-1 rounded-md backdrop-blur-sm">
+                RECORDED
+            </div>
+        </div>
+
+        <!-- [NEW] Confidence Metric -->
+        <div v-if="confidence" class="bg-white rounded-2xl p-4 shadow-sm border border-red-50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wide">낙상 분석 신뢰도</p>
+                    <p class="text-sm font-black text-gray-900">인공지능 분석 결과</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="text-2xl font-black text-red-600 tabular-nums">{{ Math.round(confidence) }}</span>
+                <span class="text-xs font-bold text-red-400 ml-0.5">%</span>
+            </div>
+        </div>
         <!-- [NEW] Return Specific Info: Outing Duration -->
         <div v-if="type === 'RETURN'" class="bg-white rounded-2xl p-5 shadow-sm border border-green-100 relative overflow-hidden">
             <div class="absolute top-0 right-0 w-20 h-20 bg-green-50 rounded-bl-full opacity-50 -mr-4 -mt-4"></div>
@@ -111,13 +142,9 @@ const notificationStore = useNotificationStore();
 const router = useRouter();
 const currentTime = ref('');
 
-onMounted(() => {
-    console.log("GlobalNotificationModal: COMPONENT MOUNTED");
-});
 
 // Watch modal visibility
 watch(() => notificationStore.modalVisible, (visible) => {
-  console.log("GlobalNotificationModal: VISIBILITY CHANGED ->", visible);
   if (visible) {
     currentTime.value = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   }
@@ -126,12 +153,15 @@ watch(() => notificationStore.modalVisible, (visible) => {
 const modalData = computed(() => notificationStore.modalData || {});
 
 const groupName = computed(() => modalData.value.groupName || '가족 그룹');
-const dependentName = computed(() => modalData.value.dependentName || '대상자');
+const dependentName = computed(() => modalData.value.dependentName || '피부양자');
 const messageContent = computed(() => modalData.value.message || '새로운 알림이 도착했습니다.');
 const type = computed(() => modalData.value.type || 'INFO');
+const videoUrl = computed(() => modalData.value.videoUrl || null);
+const confidence = computed(() => modalData.value.confidence || null);
 
 // Simplified computed classes using full strings
 const headerBgClass = computed(() => {
+   if (type.value === 'EMERGENCY' || type.value === 'FALL') return 'bg-red-50';
    if (type.value === 'OUTING') return 'bg-orange-50';
    if (type.value === 'RETURN') return 'bg-green-50';
    if (type.value === 'ACTIVITY') return 'bg-blue-50';
@@ -139,6 +169,7 @@ const headerBgClass = computed(() => {
 });
 
 const badgeColorClass = computed(() => {
+   if (type.value === 'EMERGENCY' || type.value === 'FALL') return 'bg-red-500';
    if (type.value === 'OUTING') return 'bg-orange-500';
    if (type.value === 'RETURN') return 'bg-green-500';
    if (type.value === 'ACTIVITY') return 'bg-blue-500';
@@ -146,6 +177,7 @@ const badgeColorClass = computed(() => {
 });
 
 const eventLabel = computed(() => {
+    if (type.value === 'EMERGENCY' || type.value === 'FALL') return '응급 상황';
     if (type.value === 'OUTING') return '외출 감지';
     if (type.value === 'RETURN') return '귀가 확인';
     if (type.value === 'ACTIVITY') return '활동 감지';
@@ -153,6 +185,7 @@ const eventLabel = computed(() => {
 });
 
 const headerTitle = computed(() => {
+   if (type.value === 'EMERGENCY' || type.value === 'FALL') return '낙상이 감지되었습니다';
    if (type.value === 'OUTING') return '외출하셨습니다';
    if (type.value === 'RETURN') return '귀가하셨습니다';
    if (type.value === 'ACTIVITY') return '활동이 감지됨';

@@ -71,14 +71,6 @@
             </div>
         </div>
 
-        <!-- Add Button (Placeholder slot) -->
-        <div v-if="samples.length < 6" class="flex flex-col items-center justify-center">
-             <button @click="$router.push('/voice-register')"
-                     class="w-24 h-24 rounded-full border-2 border-dashed border-slate-600 text-slate-500 flex items-center justify-center hover:border-primary hover:text-primary transition-all">
-                <span class="material-symbols-outlined text-3xl">add</span>
-             </button>
-             <span class="text-slate-500 text-sm mt-3">새 목소리</span>
-        </div>
       </div>
     </main>
 
@@ -177,7 +169,6 @@ const loadData = async () => {
         // but display list immediately
         const needsGeneration = fetchedSamples.some(s => !s.testAudioUrl);
         if (needsGeneration) {
-            console.log("Some samples missing audio, requesting generation...");
             voiceService.generateTestAudio().catch(err => console.error("Generation trigger failed", err));
             // We don't await loop here, just show "Processing" state
         }

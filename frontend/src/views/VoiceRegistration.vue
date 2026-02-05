@@ -332,11 +332,7 @@ const fetchScripts = async () => {
              serverSampleCount.value = statusData.sampleCount || 0;
              if (statusData.samples && Array.isArray(statusData.samples)) {
                  statusData.samples.forEach(sample => {
-                     let matchedScriptId = sample.scriptId;
-                     if (!matchedScriptId && sample.testAudioUrl) {
-                         const match = sample.testAudioUrl.match(/script_(\d+)/i);
-                         if (match && match[1]) matchedScriptId = parseInt(match[1]);
-                     }
+                     const matchedScriptId = sample.scriptId;
                      if (matchedScriptId) {
                          const script = voiceSamples.value.find(s => String(s.id) === String(matchedScriptId));
                          if (script) script.isRecorded = true;
@@ -356,7 +352,8 @@ const openRecorder = async (sample) => {
         const status = await voiceService.getVoiceStatus();
         const currentCount = status.sampleCount;
         if (sample.isRecorded) {
-            if (!confirm("이미 녹음된 문장입니다. 다시 녹음하시겠습니까?")) return;
+            alert("이미 녹음이 완료된 문장입니다. 수정이 필요한 경우 기존 목소리를 삭제하고 다시 등록해 주세요.");
+            return;
         } else if (currentCount >= 6) {
             showLimitModal.value = true;
             return;

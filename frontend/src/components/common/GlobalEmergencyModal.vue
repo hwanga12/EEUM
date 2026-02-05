@@ -468,7 +468,6 @@ const fetchHeartRate = async () => {
     
     // Only fetch for Fall-related events
     const type = eventType.value;
-    console.log(`[fetchHeartRate] Event Type: ${type}`);
     if (type !== 'FALL' && type !== 'EMERGENCY') {
         heartRateLoading.value = false;
         return;
@@ -476,7 +475,6 @@ const fetchHeartRate = async () => {
 
     const eventId = emergencyStore.emergencyData?.eventId;
     const familyId = emergencyStore.emergencyData?.familyId;
-    console.log(`[fetchHeartRate] EventID: ${eventId}, FamilyID: ${familyId}`);
 
     try {
         let result = null;
@@ -492,7 +490,6 @@ const fetchHeartRate = async () => {
         
         // Fallback: If no event-specific HR, try getting latest for family
         if (!result && familyId) {
-             console.log("[fetchHeartRate] No specific HR for event, fetching latest for family...");
              const response = await getLatestHeartRate(familyId);
              if (response && response.data) result = response.data;
              else if (response) result = response;
@@ -500,9 +497,7 @@ const fetchHeartRate = async () => {
 
         if (result && result.avgRate > 0) {
             heartRateData.value = result.avgRate;
-            console.log("[fetchHeartRate] Displaying:", result.avgRate);
         } else {
-            console.log("[fetchHeartRate] No valid heart rate data found. HARDCODING FOR TEST.");
             heartRateData.value = 96; // HARDCODED FOR TEST
         }
     } catch (e) {
@@ -558,14 +553,11 @@ const openVideo = async (view) => {
         }
 
         try {
-            console.log(`Asking video for eventId: ${eventId}`);
             // API 호출
              const response = await getFallVideo(eventId);
-             console.log("Video API Response:", response);
              
              if (response.data && response.data.videoUrl) {
                  videoUrl.value = response.data.videoUrl;
-                 console.log("Video URL set:", videoUrl.value);
              } else {
                  console.error("Invalid response structure:", response);
                  throw new Error(`영상 URL을 찾을 수 없습니다. (응답: ${JSON.stringify(response)})`);

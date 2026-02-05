@@ -435,7 +435,6 @@ const sendMessage = async () => {
 }
 
 const openMessageDetail = (message) => {
-  console.log("MessageList: Open Detail", message);
 
   selectedMessage.value = message
 }

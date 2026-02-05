@@ -103,7 +103,6 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        console.log("♻️ 401 detected, attempting to refresh token...");
 
         const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
         if (!refreshToken) {
@@ -119,7 +118,6 @@ apiClient.interceptors.response.use(
         const newRefreshToken = data.refreshToken; // Rotate된 Refresh Token
 
         if (newAccessToken) {
-          console.log("✅ Token refreshed successfully.");
           localStorage.setItem('accessToken', newAccessToken);
           if (newRefreshToken) {
             localStorage.setItem('refreshToken', newRefreshToken);

@@ -137,7 +137,7 @@ onMounted(async () => {
                   router.replace('/home');
               }
           } catch (e) { 
-              console.error("❌ 유저 정보 로드 실패 (토큰 만료 등):", e);
+              console.error(" 유저 정보 로드 실패 (토큰 만료 등):", e);
               // 토큰이 유효하지 않으면 삭제하여 로그인 페이지로 갈 수 있게 함
               localStorage.removeItem('accessToken');
               router.replace('/login');
@@ -162,7 +162,7 @@ onMounted(async () => {
                   return;
               }
           } catch (e) {
-             console.error("❌ Native Token Restore Failed", e);
+             console.error(" Native Token Restore Failed", e);
              // [FIX] 복구 실패 시 잘못된 토큰이 로컬에 남지 않도록 삭제
              localStorage.removeItem('accessToken');
              localStorage.removeItem('refreshToken');
@@ -277,7 +277,6 @@ onMounted(async () => {
                   const matchingNoti = notificationStore.notifications.find(n => String(n.id) === String(notificationId));
                   if (matchingNoti && (matchingNoti.eventId || matchingNoti.event_id || matchingNoti.related_id)) {
                       resolvedEventId = matchingNoti.eventId || matchingNoti.event_id || matchingNoti.related_id;
-                      console.log(`[onNativeNotification] Resolved eventId: ${resolvedEventId} from notificationId: ${notificationId}`);
                   } else {
                       console.warn(`[onNativeNotification] Could not find eventId in history for notificationId: ${notificationId}. Falling back to notificationId.`);
                   }
@@ -297,13 +296,13 @@ onMounted(async () => {
                   messageContent: message || title // Pass fully just in case
               });
           } else if (['ACTIVITY', 'OUTING', 'RETURN'].includes(type)) {
-
-              
               // [User Request] 활동/외출 알림 시 현재 화면 위에 모달 표시
+              const targetFamily = familyStore.families.find(f => String(f.id) === String(familyId)) || familyStore.selectedFamily;
+              
               notificationStore.openModal({
                   type: type,
-                  groupName: groupName || familyStore.selectedFamily?.name || '우리 가족',
-                  dependentName: '피부양자', // 실제 데이터가 있다면 개선 가능
+                  groupName: groupName || targetFamily?.name || '우리 가족',
+                  dependentName: targetFamily?.dependentName || '피부양자',
                   message: type === 'OUTING' ? '외출이 감지되었습니다.' : (type === 'RETURN' ? '귀가가 확인되었습니다.' : '활동이 감지되었습니다.')
               });
           }

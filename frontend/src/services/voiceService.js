@@ -126,7 +126,6 @@ export const updateNickname = async (sampleId, nickname) => {
  */
 export const uploadVoiceSample = async (file, scriptId, durationSec, transcript = null) => {
     try {
-        console.log(`Starting upload. ScriptId: ${scriptId}, Duration: ${durationSec}, Transcript: ${transcript ? transcript.substring(0, 10) + '...' : 'null'}`);
 
         // Duration Validation
         if (durationSec < 3.0 || durationSec > 10.0) {
@@ -151,7 +150,6 @@ export const uploadVoiceSample = async (file, scriptId, durationSec, transcript 
             contentType = 'audio/ogg';
         }
 
-        console.log(`Detected MIME: ${file.type}, Final Content-Type: ${contentType}, Extension: ${extension}`);
 
         // 1. Get Presigned URL
         // Script mode: pass scriptId, Free Talk: pass null? No, API spec implies we need extension always.
@@ -178,7 +176,6 @@ export const uploadVoiceSample = async (file, scriptId, durationSec, transcript 
             throw new Error(`잘못된 URL 형식: ${fullPresignedUrl}`);
         }
 
-        console.log("Uploading to S3:", fullPresignedUrl);
 
         // 2. Upload to S3 (MUST use the exact content-type used for Presigned URL)
         const uploadResponse = await fetch(fullPresignedUrl, {
@@ -200,7 +197,6 @@ export const uploadVoiceSample = async (file, scriptId, durationSec, transcript 
             nickname: scriptId ? `Script ${scriptId}` : `Free Talk`
         };
 
-        console.log("Saving Metadata:", payload);
         await saveSample(payload);
 
         return true;
@@ -217,7 +213,6 @@ export const uploadVoiceSample = async (file, scriptId, durationSec, transcript 
  */
 export const transcribeAudio = async (file) => {
     try {
-        console.log(`Transcribing file directly via GMS: type=${file.type}, size=${file.size}`);
 
         const formData = new FormData();
         const ext = file.type.includes('webm') ? 'webm' :

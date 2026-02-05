@@ -39,8 +39,7 @@ public class NotificationController {
                 requestDto.getTitle(),
                 requestDto.getMessage(),
                 requestDto.getType(),
-                null
-        );
+                null);
 
         // 2. 알림 전송 (FCM)
         notificationService.sendNotification(notificationId, requestDto.getTargetUserId());
@@ -48,17 +47,25 @@ public class NotificationController {
         return ResponseEntity.ok("알림이 생성되고 전송되었습니다 (ID: " + notificationId + ")");
     }
 
-    // ... (markAsRead unchanged) ...
+    @Operation(summary = "알림 읽음 처리", description = "특정 알림을 읽음 상태로 변경합니다.")
+    @PostMapping("/{notificationId}/read")
+    public ResponseEntity<Void> markAsRead(
+            @org.springframework.web.bind.annotation.PathVariable Long notificationId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        notificationService.markAsRead(notificationId, userDetails.getId());
+        return ResponseEntity.ok().build();
+    }
 
     @Operation(summary = "낙상 감지 테스트", description = "낙상 이벤트를 발생시켜 우선순위에 따른 순차 발송을 테스트합니다. (심박수 측정 포함)")
     @PostMapping("/fall-test/{familyId}")
-    public ResponseEntity<String> triggerFallDetection(@org.springframework.web.bind.annotation.PathVariable Integer familyId) {
+    public ResponseEntity<String> triggerFallDetection(
+            @org.springframework.web.bind.annotation.PathVariable Integer familyId) {
         // 1. Trigger Heart Rate Measurement (Simulating Stage 1 Fall)
         healthService.requestMeasurement(familyId);
-        
+
         // 2. Trigger Notification
         fallDetectionService.handleFallDetection(familyId, "테스트 낙상 감지 발생! (심박수 측정 요청됨)", null);
-        
+
         return ResponseEntity.ok("낙상 감지 및 심박수 측정 요청이 발생했습니다. 워치와 서버 로그를 확인하세요.");
     }
 
@@ -82,7 +89,8 @@ public class NotificationController {
         }
         Integer userId = userDetails.getId();
         log.info("Fetching notification history for familyId: {}, userId: {}", familyId, userId);
-        java.util.List<NotificationHistoryResponseDto> history = notificationService.getNotificationHistory(familyId, userId);
+        java.util.List<NotificationHistoryResponseDto> history = notificationService.getNotificationHistory(familyId,
+                userId);
         return ResponseEntity.ok(history);
     }
 
@@ -91,6 +99,5 @@ public class NotificationController {
     public static class IotTestRequestDto {
         private String type; // "OUTING" or "RETURN"
     }
-
 
 }

@@ -83,6 +83,16 @@ export const useNotificationStore = defineStore('notification', () => {
         }
     }
 
+    async function markAsRead(notificationId) {
+        try {
+            await api.post(`/notifications/${notificationId}/read`, null, { headers: { silent: true } });
+            const noti = notifications.value.find(n => n.id === notificationId);
+            if (noti) noti.isRead = true;
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+        }
+    }
+
     function clearNotifications() {
         notifications.value = [];
         currentFamilyId.value = null;
@@ -99,6 +109,7 @@ export const useNotificationStore = defineStore('notification', () => {
         modalVisible,
         modalData,
         fetchHistory,
+        markAsRead,
         clearNotifications,
         openModal,
         closeModal

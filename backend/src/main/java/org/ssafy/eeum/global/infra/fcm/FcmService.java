@@ -51,7 +51,11 @@ public class FcmService {
                 messageBuilder.putData("eventId", String.valueOf(eventId));
             }
 
-            Message message = messageBuilder.build();
+            Message message = messageBuilder
+                    .setAndroidConfig(AndroidConfig.builder()
+                            .setPriority(AndroidConfig.Priority.HIGH)
+                            .build())
+                    .build();
 
             String response = FirebaseMessaging.getInstance().send(message);
             log.info("Successfully sent message: " + response);
@@ -98,7 +102,11 @@ public class FcmService {
                 builder.putData("route", route);
             }
 
-            MulticastMessage message = builder.build();
+            MulticastMessage message = builder
+                    .setAndroidConfig(AndroidConfig.builder()
+                            .setPriority(AndroidConfig.Priority.HIGH)
+                            .build())
+                    .build();
 
             BatchResponse response = FirebaseMessaging.getInstance().sendMulticast(message);
             log.info("Successfully sent multicast message. Success count: " + response.getSuccessCount());

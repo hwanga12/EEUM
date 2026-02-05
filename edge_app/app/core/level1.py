@@ -113,6 +113,10 @@ class Level1Engine:
         self.is_ghost_mode: bool = False           # 고스트 모드 활성화 여부
         self.last_known_bbox: Optional[List[float]] = None # 소실 직전 좌표
 
+        # [Hysteresis] Ghost flickering 방지용 카운터
+        self.ghost_entry_cnt = 0
+        self.ghost_exit_cnt = 0
+
     def reset_all(self):
         self.state = "NORMAL"
         self.abnormal_start_ts = None
@@ -388,13 +392,19 @@ class Level1Engine:
             is_lost = True
             
         if is_lost:
+            # Ghost Entry Hysteresis: 소실이 일정 프레임 이상 유지되어야 진입
+            self.ghost_entry_cnt += 1
+            self.ghost_exit_cnt = 0 # 재등장 카운트 초기화
+
             # 1. 고스트 모드 진입 조건: 이미 ABNORMAL 상태여야 함
             if self.state == "ABNORMAL":
                 if not self.is_ghost_mode:
-                    self.is_ghost_mode = True
-                    self.ghost_start_ts = ts
-                    import logging
-                    logging.getLogger(__name__).info(f"[Ghost] Object lost in ABNORMAL state. Tracking started at {ts:.2f}")
+                    # [Hysteresis] 5프레임 이상 연속 소실 시 진입
+                    if self.ghost_entry_cnt >= 5:
+                        self.is_ghost_mode = True
+                        self.ghost_start_ts = ts
+                        import logging
+                        logging.getLogger(__name__).info(f"[Ghost] Object lost in ABNORMAL state (cnt={self.ghost_entry_cnt}). Tracking started at {ts:.2f}")
 
                 # 2. 고스트 타이머 체크
                 time_in_ghost = ts - self.ghost_start_ts if self.ghost_start_ts else 0.0
@@ -431,9 +441,11 @@ class Level1Engine:
 
                 if is_edge_exit and recent_drop:
                     # [Boundary Fall Trigger]
-                    # 낙상하면서 화면 밖으로 나간 것으로 의심 -> 강제 ABNORMAL & Ghost 진입
+                    # 이건 즉시성 중요하므로 Hysteresis 없이 바로 진입 (이미 나갔으므로 count 의미 없음)
                     self.state = "ABNORMAL"
                     self.is_ghost_mode = True
+                    self.ghost_start_ts = ts
+                    self.ghost_entry_cnt = 5 # 강제 설정
                     self.ghost_start_ts = ts
                     self.abnormal_start_ts = ts  # ABNORMAL 시작 시간 기록
                     
@@ -457,12 +469,24 @@ class Level1Engine:
                 return None
 
         # --- 객체/형체 존재 시 로직 진행 ---
-        # 고스트 해제 (다시 나타남)
+        self.ghost_entry_cnt = 0 # 소실 카운트 초기화
+
+        # 고스트 해제 (다시 나타남) -> Hysteresis 적용
         if self.is_ghost_mode:
-            self.is_ghost_mode = False
-            self.ghost_start_ts = None
-            import logging
-            logging.getLogger(__name__).info("[Ghost] Object reappeared. Resume tracking.")
+            self.ghost_exit_cnt += 1
+            if self.ghost_exit_cnt >= 5:
+                # 5프레임 이상 연속 감지되어야 해제
+                self.is_ghost_mode = False
+                self.ghost_start_ts = None
+                self.ghost_exit_cnt = 0
+                import logging
+                logging.getLogger(__name__).info("[Ghost] Object reappeared (cnt>=5). Resume tracking.")
+            else:
+                # 아직 확실치 않으므로 고스트 모드 유지하되, 리턴하지 않고 분석을 시도할지?
+                # 아니, 안전하게 고스트 모드인 척 리턴하는 게 나음 (불안정한 데이터 섞이지 않게)
+                # 단, 여기서는 return None 하면 분석이 끊기므로... 
+                # 일단은 분석을 허용하되 state 탈출은 보류하는 방식이 나음.
+                pass
 
         t0 = tracks[0]
         quality = float(t0.get("quality_score") or 0.0)

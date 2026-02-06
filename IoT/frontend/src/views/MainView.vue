@@ -310,8 +310,47 @@
                             <!-- List -->
                             <!-- Chat Message Style (for chat tab) -->
                             <template v-if="activeTab === 'chat'">
+                                <!-- Voice Messages loop -->
                                 <div 
-                                    v-for="(item, idx) in displayData" 
+                                    v-for="(item, idx) in voiceStore.voiceMessages" 
+                                    :key="'voice-'+item.id" 
+                                    class="group relative flex items-start gap-4 mb-4"
+                                >
+                                     <!-- Voice Icon Avatar -->
+                                     <div class="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center bg-orange-500 text-white shadow-lg ring-2 ring-white/10">
+                                        <span class="material-symbols-outlined text-3xl">voicemail</span>
+                                    </div>
+                                    
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-baseline gap-3 mb-2">
+                                            <span class="text-2xl font-black text-white">음성 메시지</span>
+                                            <span class="text-sm font-mono text-orange-400/60">{{ formatTime(item.ts * 1000) }}</span>
+                                        </div>
+                                        
+                                        <div 
+                                            class="relative group/bubble cursor-pointer" 
+                                            @click.stop="voiceStore.playMessage(item.id)"
+                                        >
+                                            <div class="bg-gradient-to-br from-orange-600/40 to-red-500/40 border border-orange-400/50 rounded-3xl p-6 pr-16 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] flex items-center gap-4">
+                                                <div class="p-3 bg-white/20 rounded-full">
+                                                    <svg v-if="item.status === 'playing'" xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 animate-pulse text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg> 
+                                                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                                                </div>
+                                                <div>
+                                                    <p class="text-2xl text-white leading-relaxed break-keep font-bold">
+                                                        {{ item.description || '새로운 음성 메시지가 도착했습니다.' }}
+                                                    </p>
+                                                    <p class="text-sm text-white/70 mt-1" v-if="item.status === 'playing'">재생 중...</p>
+                                                    <p class="text-sm text-white/70 mt-1" v-else>터치하여 재생</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Existing Text Chat loop -->
+                                <div 
+                                    v-for="(item, idx) in alertStore.chatHistory" 
                                     :key="item.id || idx" 
                                     class="group relative flex items-start gap-4 mb-4"
                                 >
@@ -737,9 +776,11 @@
 import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { useSlideshowStore } from '@/stores/slideshow'
 import { useAlertStore } from '@/stores/alert'
+import { useVoiceStore } from '@/stores/voice'
 
 const slideshowStore = useSlideshowStore()
 const alertStore = useAlertStore()
+const voiceStore = useVoiceStore()
 const activeTab = ref(null) // null for closed
 
 const toggleTab = (tab) => {
@@ -762,12 +803,19 @@ const tabData = ref([])
 
 const displayData = computed(() => {
     if (activeTab.value === 'alert') return alertStore.history
-    if (activeTab.value === 'chat') return alertStore.chatHistory
+    if (activeTab.value === 'chat') {
+        // Merge voice messages with chat history? Or just show voice messages?
+        // For now, let's prepend voice messages to the chat view or show them mixed
+        // But since structure might differ, let's just return voiceMessages if we want to test voice primarily
+        // OR better: Create a combined list. 
+        // For this task, I will prioritize voiceStore messages in the chat tab.
+        return [...voiceStore.voiceMessages, ...alertStore.chatHistory]
+    }
     return tabData.value
 })
 
 const fetchTabData = async (tab) => {
-    if (!tab || tab === 'alert' || tab === 'settings') return
+    if (!tab || tab === 'alert' || tab === 'settings' || tab === 'chat') return
 
     isLoading.value = true
     try {
@@ -837,10 +885,14 @@ const currentDateFormatted = computed(() => {
 onMounted(() => {
   slideshowStore.startStream()
   slideshowStore.updateWifiStatus()
+  voiceStore.connect()
   timer = setInterval(updateTime, 1000)
 })
 
-onUnmounted(() => { if(timer) clearInterval(timer) })
+onUnmounted(() => { 
+    if(timer) clearInterval(timer)
+    voiceStore.disconnect()
+})
 
 const formatTime = (timeStr) => {
     if (!timeStr) return ''

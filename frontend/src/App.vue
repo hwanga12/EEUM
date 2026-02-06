@@ -119,27 +119,28 @@ onMounted(async () => {
       const uiStore = (await import('./stores/ui')).useUiStore();
       if (retryCount === 0) uiStore.resetLoading();
       
-      const localToken = localStorage.getItem('accessToken');
+      // [Fix] sessionStorage도 확인 (로그인 유지 미체크 시 대응)
+      let token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
       
-      // 1) 로컬에 토큰이 있는 경우 -> 네이티브에도 백업(동기화)
-      if (localToken) {
+      // 1) 로컬/세션에 토큰이 있는 경우 -> 네이티브에도 백업(동기화)
+      if (token && token !== "null") {
           if (window.AndroidBridge && window.AndroidBridge.saveAccessToken) {
-             window.AndroidBridge.saveAccessToken(localToken);
+             window.AndroidBridge.saveAccessToken(token);
           }
           try {
               await userStore.fetchUser();
-
               await familyStore.fetchFamilies();
-
               
               // 유효한 토큰이면 홈으로 이동 (로그인 페이지에 갇히지 않도록)
-              if (router.currentRoute.value.path === '/login' || router.currentRoute.value.path === '/') {
+              const currentPath = router.currentRoute.value.path;
+              if (currentPath === '/login' || currentPath === '/') {
                   router.replace('/home');
               }
           } catch (e) { 
-              console.error(" 유저 정보 로드 실패 (토큰 만료 등):", e);
-              // 토큰이 유효하지 않으면 삭제하여 로그인 페이지로 갈 수 있게 함
+              console.error("유저 정보 로드 실패 (토큰 만료 등):", e);
               localStorage.removeItem('accessToken');
+              sessionStorage.removeItem('accessToken');
+              if (window.AndroidBridge?.saveAccessToken) window.AndroidBridge.saveAccessToken("");
               router.replace('/login');
           }
           return;
@@ -151,6 +152,7 @@ onMounted(async () => {
               const nativeToken = window.AndroidBridge.getAccessToken();
               // nativeToken이 'null' 문자열이거나 실제 null일 수 있음
               if (nativeToken && nativeToken !== "null" && nativeToken.length > 0) {
+                  // 복구 시에는 기본적으로 localStorage에 백업 (브라우저 세션 끊김 방지)
                   localStorage.setItem('accessToken', nativeToken);
                   
                   // 유저 정보 로드 시도
@@ -162,14 +164,10 @@ onMounted(async () => {
                   return;
               }
           } catch (e) {
-             console.error(" Native Token Restore Failed", e);
-             // [FIX] 복구 실패 시 잘못된 토큰이 로컬에 남지 않도록 삭제
+             console.error("Native Token Restore Failed", e);
              localStorage.removeItem('accessToken');
-             localStorage.removeItem('refreshToken');
-             if (window.AndroidBridge) {
-                 if (window.AndroidBridge.logout) window.AndroidBridge.logout();
-                 if (window.AndroidBridge.saveAccessToken) window.AndroidBridge.saveAccessToken(""); // Explicitly clear
-             }
+             sessionStorage.removeItem('accessToken');
+             if (window.AndroidBridge?.saveAccessToken) window.AndroidBridge.saveAccessToken("");
              router.replace('/login');
              return; // Stop further retries
           }

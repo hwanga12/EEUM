@@ -37,8 +37,7 @@ apiClient.interceptors.request.use(
       const nativeToken = window.AndroidBridge.getAccessToken();
       if (nativeToken && nativeToken !== 'null' && nativeToken.length > 0) {
         token = nativeToken;
-        // 다음 요청을 위해 localStorage에 동기화
-        localStorage.setItem('accessToken', nativeToken);
+        // [Safety] 인터셉터에서 로컬스토리지를 직접 수정하지 않습니다. (App.vue의 restoreSession이 담당)
       }
     }
 

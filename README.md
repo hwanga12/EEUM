@@ -15,18 +15,19 @@
 
 ## 2. 주요 기능
 
-### �실시간 안전 모니터링 & 낙상 감지
-- **Edge AI 낙상 감지**: 가정 내 설치된 IoT 디바이스(Raspberry Pi + Camera)가 YOLOv8 Pose Estimation을 사용하여 실시간으로 낙상 사고를 감지합니다.
-- **오경보 최소화**: PIR 센서와 AI 비전 기술을 결합하여 정확도를 높였습니다.
-- **긴급 알림**: 낙상 발생 시 즉시 보호자 앱(App)으로 긴급 알람을 전송하고, 119 신고 연동 등 빠른 대처를 돕습니다.
+### 🚨 실시간 안전 모니터링 & 낙상 감지
+- **Edge AI 기반 낙상 감지**: 라즈베리파이와 카메라를 이용해, **온디바이스 AI(YOLOv8 Pose)**가 실시간으로 넘어짐을 정밀하게 분석합니다.
+- **오작동 최소화 (Sensor Fusion)**: PIR 모션 센서와 비전 AI를 결합하여 단순 움직임과 실제 낙상을 정확히 구분합니다.
+- **골든타임 확보**: 낙상 감지 즉시 보호자 앱으로 **긴급 알림(FCM)**을 발송하고, 119 신고 연동 등 빠른 대처를 돕습니다.
 
-### AI 음성 복제 & 정서 케어
-- **보호자 목소리 재현**: 자녀가 짧은 문장을 녹음하면, AI가 이를 학습하여 언제든 자녀의 목소리로 부모님께 메시지를 읽어드립니다.
-- **개인화된 TTS**: "식사 하셨어요?", "약 드실 시간이에요" 등 일상적인 안부 인사를 목소리로 전달하여 정서적 고립감을 해소합니다.
+### 🗣️ AI 음성 복제 & 정서 케어
+- **보호자 목소리 재현 (Voice Cloning)**: 단 몇 문장만 녹음해도 AI가 이를 학습하여, 언제든 자녀의 목소리로 부모님께 메시지를 읽어드립니다.
+- **따뜻한 교감**: 딱딱한 기계음 대신, 익숙한 가족의 목소리로 **투약 알림**과 안부 인사를 전달하여 정서적 고립감을 해소합니다.
+- **가족 앨범 & 메시지**: 가족들이 올린 사진과 음성 메시지를 통해 멀리 떨어져 있어도 항상 연결된 느낌을 제공합니다.
 
-### 스마트 IoT 제어 & 스케줄 관리
-- **원격 기기 관리**: 보호자는 앱을 통해 부모님 댁애서 발생한 낙상 기록과 부모님의 실시간 심박수를 파악할 수 있습니다.
-- **스케줄 브리핑**: 매일 아침 설정된 시간에 오늘의 일정, 복약 시간을 음성으로 안내합니다.
+### ❤️ 헬스케어 & 스마트 라이프
+- **갤럭시 워치 건강 모니터링**: **Samsung Health SDK**를 연동하여 부모님의 실시간 심박수와 활동량을 정밀하게 체크합니다.
+- **스마트 일정 브리핑**: 매일 아침, 가족의 목소리로 오늘의 일정, 날씨, 복약 시간을 브리핑해 드립니다.
 
 ---
 
@@ -174,6 +175,11 @@ graph TD
 ![Nginx](https://img.shields.io/badge/nginx-%23009639.svg?style=for-the-badge&logo=nginx&logoColor=white)
 ![nGrinder](https://img.shields.io/badge/nGrinder-FFA000?style=for-the-badge&logo=naver&logoColor=white)
 
+### Communication
+![Notion](https://img.shields.io/badge/Notion-%23000000.svg?style=for-the-badge&logo=notion&logoColor=white)
+![GitLab](https://img.shields.io/badge/gitlab-%23181717.svg?style=for-the-badge&logo=gitlab&logoColor=white)
+![Mattermost](https://img.shields.io/badge/Mattermost-0072C6?style=for-the-badge&logo=mattermost&logoColor=white)
+
 ---
 
 ## 5. 시작 가이드
@@ -207,22 +213,15 @@ npm run dev
 ## 6. 화면 구성 및 API 주소
 
 ### 화면 구성 예시 (Screen Configuration)
-| 메인 화면 | 로그인 | 회원가입 | 대시보드 | 마이페이지 |
+| 메인 화면 | 로그인 | 메인화면 | 일정 관리 | 기기 관리 |
 | :---: | :---: | :---: | :---: | :---: |
 | <img src="docs/img/screen_01.png" width="200"> | <img src="docs/img/screen_02.png" width="200"> | <img src="docs/img/screen_03.png" width="200"> | <img src="docs/img/screen_04.png" width="200"> | <img src="docs/img/screen_05.png" width="200"> |
-| **낙상 감지** | **복약 알림** | **가족 관리** | **음성 메시지** | **설정** |
+| **목소리 학습** | **(알림 온 화면으로 수정하면 좋을듯)** | **심박수 측정** | **복약 관리** | **알림 조회** |
 | <img src="docs/img/screen_06.png" width="200"> | <img src="docs/img/screen_07.png" width="200"> | <img src="docs/img/screen_08.png" width="200"> | <img src="docs/img/screen_09.png" width="200"> | <img src="docs/img/screen_10.png" width="200"> |
 <br>
 
 ### API Documentation
 - **Swagger UI**: `https://i14a105.p.ssafy.io/swagger-ui/index.html`
-
-### 화면 예시
-| 메인 대시보드 | 낙상 감지 알림 | 음성 메시지 전송 |
-| :---: | :---: | :---: |
-| ![Dashboard](/docs/images/dashboard-placeholder.png) | ![Alert](/docs/images/alert-placeholder.png) | ![Voice](/docs/images/voice-placeholder.png) |
-
----
 
 ## 7. 디렉토리 구조
 

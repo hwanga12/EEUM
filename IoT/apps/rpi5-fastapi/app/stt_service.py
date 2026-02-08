@@ -74,25 +74,31 @@ class FasterWhisperSTT:
 
     async def _preprocess_wav(self, wav_path: str) -> str:
         """
-        예전 STT 로직 기준 전처리:
-        - highpass/lowpass
-        - afftdn
-        - compressor/limiter
-        - volume +12dB
+        STT 전용 "최소/안전" 전처리(인식률 우선):
+        - band 제한(highpass/lowpass)
+        - 무음 구간만 게이트(agate): 팬/환경소음이 무음에서 텍스트로 새는 것 방지
+        - 16k/mono/pcm_s16le 로 강제(Whisper 입력 안정화)
+
+        NOTE:
+        - afftdn/comp/limiter/loudnorm는 자음/어택을 망가뜨려 STT에 불리한 경우가 많아서 제거
         """
         out = f"/tmp/eeum_stt_proc_{int(time.time()*1000)}.wav"
 
-        af = (
-            "highpass=f=80,lowpass=f=8000,"
-            "afftdn=nf=-20,"
-            "dynaudnorm=f=150:g=31,"
-            "acompressor=threshold=-24dB:ratio=3:attack=5:release=80,"
-            "alimiter=limit=0.98,"
-            "volume=32dB" 
-        )
-
+        # 기본값: 한국어 음성(대부분)에서 안정적으로 먹는 대역 + 무음 게이트
+        af = "highpass=f=180,lowpass=f=3400,agate=threshold=-45dB:attack=5:release=500"
         r = await async_sh(
-            ["ffmpeg", "-loglevel", "error", "-y", "-i", wav_path, "-af", af, out],
+            [
+                "ffmpeg",
+                "-loglevel", "error",
+                "-y",
+                "-i", wav_path,
+                "-af", af,
+                # Whisper 입력 안정화(샘플레이트 튐 방지)
+                "-ar", "16000",
+                "-ac", "1",
+                "-c:a", "pcm_s16le",
+                out,
+            ],
             check=False,
             timeout=4.0,
         )
@@ -219,8 +225,8 @@ async def record_with_vad(
     *,
     device: str | None = None,
     max_sec: float = 10.0,
-    sample_rate: int = 16000,
-    frame_ms: int = 30,
+    sample_rate: int = 48000,
+    frame_ms: int = 20,
     vad_level: int = 2,
     min_speech_sec: float = 0.25,
     end_silence_sec: float = 1.3,
@@ -399,6 +405,23 @@ async def record_with_vad(
             wf.setsampwidth(bytes_per_sample)
             wf.setframerate(sample_rate)
             wf.writeframes(bytes(speech_bytes))
+
+        # --- tail suppress (컷 X, 꼬리만 눌러서 STT 헛자막 방지) ---
+        try:
+            tmp_out = f"/tmp/eeum_gate_{int(time.time()*1000)}.wav"
+            af_tail = "agate=threshold=-38dB:attack=10:release=900"
+            r2 = await async_sh(
+                ["ffmpeg", "-loglevel", "error", "-y", "-i", out_wav, "-af", af_tail, tmp_out],
+                check=False,
+                timeout=3.0,
+            )
+            if r2.returncode == 0:
+                os.replace(tmp_out, out_wav)
+            else:
+                try: os.remove(tmp_out)
+                except Exception: pass
+        except Exception:
+            logger.debug("[stt_rec] tail gate failed (ignore)", exc_info=True)
 
         pcm = bytes(speech_bytes)
         rms = audioop.rms(pcm, 2)

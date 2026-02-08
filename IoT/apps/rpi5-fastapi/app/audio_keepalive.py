@@ -29,6 +29,9 @@ async def audio_keepalive_loop(state):
     while not getattr(state, "shutting_down", False):
         await asyncio.sleep(sec)
 
+        if getattr(state, "fall_active", False):
+            continue
+
         # 재생 중이면 스킵
         try:
             if getattr(state, "audio", None) and getattr(state.audio, "is_playing", False):

@@ -14,10 +14,9 @@ from .audio_manager import AudioPrio
 from .stt_service import FasterWhisperSTT
 
 logger = logging.getLogger(__name__)
-DEBUG_DIV = 30
+DEBUG_DIV = 120
 PIR_ABSENCE_SEC = 2 * 60 * 60 / DEBUG_DIV        # 2h
-VISION_EXIT_ABSENCE_SEC = 60 * 60 / DEBUG_DIV    # 1h
-DAY = 24 * 60 * 60 / (4 * DEBUG_DIV)                   # 1d
+VISION_EXIT_ABSENCE_SEC = 60 * 60 / DEBUG_DIV    # 1h                 # 1d
 
 def _cancel(task: asyncio.Task | None) -> None:
     if task and not task.done():
@@ -196,7 +195,6 @@ async def device_offline_loop(state: MonitorState, interval_sec: float = 10.0) -
     try:
         logger.info("[device_offline_loop] started interval=%s", interval_sec)
 
-        # did -> last published online(bool) cache
         if not hasattr(state, "_dev_online_cache"):
             state._dev_online_cache = {}
 
@@ -211,6 +209,10 @@ async def device_offline_loop(state: MonitorState, interval_sec: float = 10.0) -
                 devices = (doc.get("devices") or {})
 
                 for kind, m in devices.items():
+                    # PIR만 오프라인 체크 (vision은 유선으로 항상 online 가정)
+                    if kind != "pir":
+                        continue
+
                     if not isinstance(m, dict):
                         continue
                     for did, info in m.items():
@@ -226,35 +228,27 @@ async def device_offline_loop(state: MonitorState, interval_sec: float = 10.0) -
                             continue
 
                         should_be_online = (now - last_f) <= float(state.offline_after_sec)
-
-                        # json에 저장된 online을 "진짜 상태"로 사용
                         is_online = bool(info.get("online", False))
 
-                        # 캐시에 저장된 이전 상태(없으면 최초 관측)
                         prev_online = state._dev_online_cache.get(did)
                         if prev_online is None:
                             state._dev_online_cache[did] = is_online
                             continue
 
-                        # 1) online -> offline 전이: persist + publish
                         if is_online and (not should_be_online):
                             try:
                                 changed = await ds.async_set_offline(did)
                                 if changed:
-                                    # doc 안의 online은 ds.async_set_offline에서 False로 바뀜
                                     if state.mqtt:
                                         state.mqtt.publish_online(retain=True)
                                     logger.warning(
                                         "[device] offline did=%s kind=%s last_seen=%s now=%s",
                                         did, kind, last_f, now
                                     )
-                                    is_online = False  # 캐시 업데이트용
+                                    is_online = False
                             except Exception:
                                 logger.exception("[device] set_offline failed did=%s", did)
 
-                        # 2) offline -> online 전이: (persist는 mark_seen이 함) publish만
-                        # - 여기서는 should_be_online이 True이고, json online도 True로 바뀐 경우를 잡는다
-                        # - 외부에서 online을 올려주거나 mark_seen이 이미 올려둔 상태를 "감지"하는 용도
                         if (not prev_online) and is_online and should_be_online:
                             if state.mqtt:
                                 try:

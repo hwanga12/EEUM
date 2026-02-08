@@ -297,10 +297,13 @@ const handlePhotoClick = (photo) => {
     if (isSelectionMode.value) {
         togglePhotoSelection(photo);
     } else {
-        // Navigate to detail page
+        // Navigate to detail page with current filters as context
         router.push({
             name: 'PhotoDetail',
-            params: { photoId: photo.photoId || photo.id }
+            params: { photoId: photo.photoId || photo.id },
+            query: { 
+                ...route.query // Pass uploader, date etc.
+            }
         });
     }
 };

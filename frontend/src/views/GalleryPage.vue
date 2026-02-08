@@ -333,7 +333,8 @@ const navigateToAlbum = (album) => {
 const goToPhotoDetail = (photo) => {
     router.push({
         name: 'PhotoDetail',
-        params: { photoId: photo.photoId || photo.id }
+        params: { photoId: photo.photoId || photo.id },
+        query: { context: 'recent' }
     });
 };
 

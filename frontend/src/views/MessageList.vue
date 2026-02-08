@@ -251,7 +251,7 @@
               <button
                 @click="sendMessage"
                 :disabled="!canSend || sending"
-                class="w-full bg-[#EDAEA0] hover:bg-[#E29A8A] disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-lg font-bold py-3.5 rounded-2xl shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                class="w-full eeum-btn-primary hover:brightness-95 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-lg font-bold py-3.5 rounded-2xl shadow-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 <span v-if="!sending" class="material-symbols-outlined text-xl">send</span>
                 <svg v-else class="animate-spin h-5 w-5" viewBox="0 0 24 24">

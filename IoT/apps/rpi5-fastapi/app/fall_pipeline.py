@@ -47,10 +47,6 @@ async def _play_tts_blocking(state, text: str, *, kind: str, replace_key: str, t
 
 
 async def run_fall_tts_stt_pipeline(state, *, deadline_sec: float = 35.0) -> None:
-    """
-    STT 로직만 '예전 방식(record_with_vad 단순 버전)'으로 회귀한 파이프라인.
-    TTS/오디오 매니저 안정화 로직은 그대로 유지.
-    """
     t0 = time.time()
 
     try:
@@ -98,8 +94,8 @@ async def run_fall_tts_stt_pipeline(state, *, deadline_sec: float = 35.0) -> Non
         # 에코는 record_with_vad(start_guard_sec)에서 VAD 판단만 무시하게 처리한다.
         await asyncio.sleep(0.02)
 
-        # 2) STT(녹음+인식) - 예전 로직 파라미터
-        stage("WAIT_STT", why="record_with_vad(old)")
+        # 2) STT(녹음+인식)
+        stage("WAIT_STT", why="record_with_vad")
 
         if state.stt_busy:
             logger.info("[fall] stt skipped: already busy")
@@ -110,20 +106,19 @@ async def run_fall_tts_stt_pipeline(state, *, deadline_sec: float = 35.0) -> Non
         state.stt_busy = True
         async with state.stt_lock:
             try:
-                # fall_pipeline.py (record_with_vad 호출부만 교체)
                 ok_rec, rec_msg = await asyncio.wait_for(
                     record_with_vad(
                         STT_TMP_WAV,
-                        device=(AUDIO_IN_DEVICE or "plughw:CARD=Audio,DEV=0"),
+                        device=(AUDIO_IN_DEVICE or "hw:CARD=Audio,DEV=0"),
                         max_sec=min(9.0, remaining()),
                         end_silence_sec=0.7,
                         min_speech_sec=0.12,
                         vad_level=2,
+                        sample_rate=48000,
                         frame_ms=20,
                         discard_head_sec=0.0,
-                        # 앞부분 잘림 방지(더 공격적으로)
-                        pre_roll_sec=0.45,
-                        start_speech_streak=0,
+                        pre_roll_sec=0.70,
+                        start_speech_streak=1,
                         max_speech_sec=5.5,
                         # 에코 가드: 시작 후 N초는 VAD판단만 무시(오디오는 prebuf로 보존)
                         start_guard_sec=float(FALL_ECHO_GUARD_SEC or 0.0),

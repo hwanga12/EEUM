@@ -80,7 +80,7 @@ DEFAULT_TTS_MESSAGE = [
 ]
 
 DEFAULT_TTS_BY_KIND = {
-    "fall_detected": "지금 괜찮으세요? 도와드릴까요?",
+    "fall": "지금 괜찮으세요? 도와드릴까요?",
     "schedule": "새로운 일정 알림이 있어요",
     "medication": "새로운 복약 알림이 있어요",
     "voice": "새로운 음성 메시지가 있어요"

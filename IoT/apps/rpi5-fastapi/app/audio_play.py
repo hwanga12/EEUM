@@ -443,7 +443,7 @@ async def start_mp3_playback(path: str, *, volume: float = 1.0, start_delay_ms: 
     # resample 안정화(클럭 드리프트/언더런 완화)
     base = f"aresample=async=1:first_pts=0"
     if preroll_ms > 0:
-        af = f"adelay={delay},{base},volume={volume:.2f}"
+        af = f"adelay={delay},{base},afade=t=in:ss=0:d=0.03,volume={volume:.2f}"
     else:
         af = f"{base},volume={volume:.2f}"
 

@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.ssafy.eeum.domain.album.dto.AlbumDTOs;
+import org.ssafy.eeum.domain.album.dto.*;
 import org.ssafy.eeum.domain.auth.entity.User;
 import org.ssafy.eeum.domain.auth.repository.UserRepository;
 import org.ssafy.eeum.domain.family.entity.Family;
@@ -174,10 +174,10 @@ public class MessageService {
         }
 
         @Transactional
-        public AlbumDTOs.IotAlbumSyncResponseDTO syncForIot(Integer familyId) {
+        public IotAlbumSyncResponseDTO syncForIot(Integer familyId) {
                 List<Message> unsyncedMessages = messageRepository.findAllByGroupIdAndIsSyncedFalse(familyId);
 
-                List<AlbumDTOs.AlbumSyncItemResponseDTO> addedItems = new java.util.ArrayList<>();
+                List<AlbumSyncItemResponseDTO> addedItems = new java.util.ArrayList<>();
                 List<Integer> deletedIds = new java.util.ArrayList<>();
                 List<Integer> syncedIds = new java.util.ArrayList<>();
 
@@ -185,7 +185,7 @@ public class MessageService {
                         if (msg.getDeletedAt() != null) {
                                 deletedIds.add(msg.getId());
                         } else if (msg.getVoiceUrl() != null) {
-                                addedItems.add(AlbumDTOs.AlbumSyncItemResponseDTO
+                                addedItems.add(AlbumSyncItemResponseDTO
                                                 .builder()
                                                 .id(msg.getId())
                                                 .url(s3Service.getPresignedUrl(msg.getVoiceUrl()))
@@ -200,7 +200,7 @@ public class MessageService {
                         messageRepository.markAsSynced(syncedIds);
                 }
 
-                return AlbumDTOs.IotAlbumSyncResponseDTO.builder()
+                return IotAlbumSyncResponseDTO.builder()
                                 .added(addedItems)
                                 .deleted(deletedIds)
                                 .build();

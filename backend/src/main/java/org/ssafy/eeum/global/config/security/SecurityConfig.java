@@ -24,6 +24,12 @@ import org.ssafy.eeum.global.auth.oauth2.CustomOAuth2UserService;
 
 import java.util.List;
 
+/**
+ * 애플리케이션의 보안 설정을 담당하는 클래스입니다.
+ * JWT 기반 인증, OAuth2 로그인, CORS 및 접근 권한 등을 설정합니다.
+ * 
+ * @summary Spring Security 설정
+ */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -33,12 +39,26 @@ public class SecurityConfig {
         private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
         private final JwtProvider jwtProvider;
 
+        @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins}")
+        private List<String> allowedOrigins;
+
+        /**
+         * 비밀번호 암호화를 위한 BCryptPasswordEncoder를 빈으로 등록합니다.
+         * 
+         * @summary PasswordEncoder Bean 생성
+         * @return BCryptPasswordEncoder 객체
+         */
         @Bean
         public PasswordEncoder passwordEncoder() {
                 return new BCryptPasswordEncoder();
         }
 
-        // [핵심] Swagger 관련 경로를 Security Filter Chain에서 제외
+        /**
+         * Swagger UI 콘텐츠 등 보안 필터를 거치지 않아도 되는 정적 리소스 경로를 설정합니다.
+         * 
+         * @summary 웹 보안 무시 경로 설정
+         * @return WebSecurityCustomizer 객체
+         */
         @Bean
         public WebSecurityCustomizer webSecurityCustomizer() {
                 return (web) -> web.ignoring().requestMatchers(
@@ -50,6 +70,14 @@ public class SecurityConfig {
                                 "/favicon.ico");
         }
 
+        /**
+         * Spring Security의 HTTP 보안 설정을 구성합니다.
+         * 
+         * @summary SecurityFilterChain 설정
+         * @param http HttpSecurity 객체
+         * @return 구성된 SecurityFilterChain
+         * @throws Exception 설정 오류 시 발생
+         */
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
                 http
@@ -87,18 +115,16 @@ public class SecurityConfig {
                 return http.build();
         }
 
+        /**
+         * CORS(Cross-Origin Resource Sharing) 관련 정책을 설정합니다.
+         * 
+         * @summary CORS 설정 정보 생성
+         * @return CorsConfigurationSource 객체
+         */
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOriginPatterns(List.of(
-                                "http://localhost:*",
-                                "http://127.0.0.1:*",
-                                "http://10.0.2.2:*",
-                                "http://192.168.*:*",
-                                "http://70.12.*:*",
-                                "https://192.168.*:*",
-                                "https://i14a105.p.ssafy.io:*",
-                                "https://i14a105.p.ssafy.io"));
+                config.setAllowedOriginPatterns(allowedOrigins);
                 config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
                 config.setAllowedHeaders(List.of("*"));
                 config.setAllowCredentials(true);

@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.ssafy.eeum.domain.album.dto.AlbumDTOs.*;
+import org.ssafy.eeum.domain.album.dto.*;
 import org.ssafy.eeum.domain.album.service.AlbumService;
 import org.ssafy.eeum.global.auth.model.CustomUserDetails;
 

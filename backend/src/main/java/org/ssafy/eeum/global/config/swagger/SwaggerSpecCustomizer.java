@@ -12,9 +12,23 @@ import org.springframework.web.method.HandlerMethod;
 import org.ssafy.eeum.global.common.response.RestApiResponse;
 import org.ssafy.eeum.global.error.model.ErrorCode;
 
+/**
+ * SwaggerApiSpec 어노테이션을 파싱하여 Swagger UI에 반영하는 커스텀마이저 클래스입니다.
+ * 성공 응답 및 에러 응답 예시를 동적으로 생성합니다.
+ * 
+ * @summary Swagger 명세 커스텀마이저
+ */
 @Component
 public class SwaggerSpecCustomizer implements OperationCustomizer {
 
+    /**
+     * SwaggerApiSpec 어노테이션 정보를 바탕으로 API Operation을 커스터마이징합니다.
+     * 
+     * @summary API 명세 커스터마이징 실행
+     * @param operation     Swagger Operation 객체
+     * @param handlerMethod 대상 컨트롤러 메서드 정보
+     * @return 수정된 Operation 객체
+     */
     @Override
     public Operation customize(Operation operation, HandlerMethod handlerMethod) {
         SwaggerApiSpec apiSpec = handlerMethod.getMethodAnnotation(SwaggerApiSpec.class);
@@ -47,6 +61,13 @@ public class SwaggerSpecCustomizer implements OperationCustomizer {
         return operation;
     }
 
+    /**
+     * 에러 응답 예시를 Swagger 명세에 추가합니다.
+     * 
+     * @summary 에러 예시 추가
+     * @param responses Swagger 응답 객체 맵
+     * @param errorCode 추가할 에러 코드 정보
+     */
     private void addErrorExample(ApiResponses responses, ErrorCode errorCode) {
         String statusCode = String.valueOf(errorCode.getHttpStatus().value());
 

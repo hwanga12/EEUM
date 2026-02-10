@@ -12,15 +12,30 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
 
+/**
+ * API 요청 및 응답 정보를 로깅하기 위한 필터 클래스입니다.
+ * 요청 URI, 메소드, 상태 코드, 소요 시간 및 페이로드를 로그로 남깁니다.
+ * 
+ * @summary API 로깅 필터
+ */
 @Slf4j
 @Component
 public class ApiLoggingFilter extends OncePerRequestFilter {
 
+    /**
+     * 요청을 가로채서 로깅 처리를 수행합니다.
+     * 
+     * @summary 필터 실행 및 로깅
+     * @param request     HttpServletRequest 객체
+     * @param response    HttpServletResponse 객체
+     * @param filterChain FilterChain 객체
+     * @throws ServletException 서블릿 예외 발생 시
+     * @throws IOException      입출력 예외 발생 시
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // ContentCachingWrapper를 사용하여 HTTP body를 캐싱 (한 번 읽어도 다시 읽을 수 있게 함)
         ContentCachingRequestWrapper requestWrapper = new ContentCachingRequestWrapper(request);
         ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
 
@@ -35,6 +50,14 @@ public class ApiLoggingFilter extends OncePerRequestFilter {
         responseWrapper.copyBodyToResponse();
     }
 
+    /**
+     * 상세 API 호출 정보를 추출하여 로그로 기록합니다.
+     * 
+     * @summary API 상세 정보 로깅
+     * @param request  캐싱된 요청 객체
+     * @param response 캐싱된 응답 객체
+     * @param duration 처리 소요 시간 (ms)
+     */
     private void logApiDetails(ContentCachingRequestWrapper request, ContentCachingResponseWrapper response,
             long duration) {
         String method = request.getMethod();
@@ -45,22 +68,22 @@ public class ApiLoggingFilter extends OncePerRequestFilter {
 
         // 요청 페이로드 추출 (최대 1000자 제한)
         String requestPayload = new String(request.getContentAsByteArray());
-        if (requestPayload.length() > 1000) {
-            requestPayload = requestPayload.substring(0, 1000) + "... [TRUNCATED]";
+        if (requestPayload.length() > 500) {
+            requestPayload = requestPayload.substring(0, 500) + "... [생략됨]";
         }
 
         // 응답 페이로드 추출 (최대 1000자 제한)
         String responsePayload = new String(response.getContentAsByteArray());
-        if (responsePayload.length() > 1000) {
-            responsePayload = responsePayload.substring(0, 1000) + "... [TRUNCATED]";
+        if (responsePayload.length() > 500) {
+            responsePayload = responsePayload.substring(0, 500) + "... [생략됨]";
         }
 
         log.info(
-                "[API LOG] {} {} | Status: {} | ClientIP: {} | Time: {}ms | Query: {} | ReqPayload: {} | ResPayload: {}",
+                "[API 로그] {} {} | 상태: {} | 클라이언트IP: {} | 소요시간: {}ms | 쿼리스트링: {} | 요청페이로드: {} | 응답페이로드: {}",
                 method, uri, status, clientIp, duration,
-                queryString != null ? queryString : "N/A",
-                requestPayload.isEmpty() ? "EMPTY" : requestPayload,
-                responsePayload.isEmpty() ? "EMPTY" : responsePayload);
+                queryString != null ? queryString : "없음",
+                requestPayload.isEmpty() ? "비어있음" : requestPayload,
+                responsePayload.isEmpty() ? "비어있음" : responsePayload);
     }
 
     private String getClientIp(HttpServletRequest request) {
@@ -77,10 +100,13 @@ public class ApiLoggingFilter extends OncePerRequestFilter {
         return ip;
     }
 
+    private static final String SWAGGER_UI_PATH = "/swagger-ui";
+    private static final String SWAGGER_DOCS_PATH = "/v3/api-docs";
+    private static final String FAVICON_PATH = "/favicon.ico";
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        // 정적 리소스나 스웨거 문서는 로깅에서 제외
-        return path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs") || path.startsWith("/favicon.ico");
+        return path.startsWith(SWAGGER_UI_PATH) || path.startsWith(SWAGGER_DOCS_PATH) || path.startsWith(FAVICON_PATH);
     }
 }

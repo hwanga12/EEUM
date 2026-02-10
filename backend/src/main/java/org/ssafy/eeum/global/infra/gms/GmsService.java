@@ -9,7 +9,11 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.core.ParameterizedTypeReference;
+import org.ssafy.eeum.domain.health.entity.HealthMetric;
 
 @Slf4j
 @Service
@@ -26,7 +30,7 @@ public class GmsService {
         private String model;
 
         public Map<String, Object> generateHealthReport(
-                        List<org.ssafy.eeum.domain.health.entity.HealthMetric> metrics) {
+                        List<HealthMetric> metrics) {
                 if (metrics.isEmpty()) {
                         return Map.of(
                                         "summary", "오늘 수집된 건강 데이터가 없습니다.",
@@ -38,7 +42,7 @@ public class GmsService {
                 // Prepare context for AI
                 StringBuilder context = new StringBuilder(
                                 "당신은 전문 패밀리 헬스 어드바이저입니다. 아래의 건강 데이터를 분석하여 노인(피부양자)을 위한 따뜻하고 전문적인 리포트를 작성해주세요.\n\n");
-                for (org.ssafy.eeum.domain.health.entity.HealthMetric m : metrics) {
+                for (HealthMetric m : metrics) {
                         context.append(
                                         String.format("- 시간: %s, 걸음수: %s, 평균심박수: %s, 혈압: %s/%s, 혈중산소: %s, 활동칼로리: %s kcal, 활동시간: %s분\n",
                                                         m.getRecordDate(), m.getSteps(), m.getAverageHeartRate(),
@@ -85,7 +89,7 @@ public class GmsService {
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .bodyValue(requestBody)
                                         .retrieve()
-                                        .bodyToMono(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
+                                        .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                                         })
                                         .block();
 
@@ -104,9 +108,9 @@ public class GmsService {
                                                 content = content.substring(0, content.indexOf("```"));
                                         }
 
-                                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                                        ObjectMapper mapper = new ObjectMapper();
                                         return mapper.readValue(content,
-                                                        new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
+                                                        new TypeReference<Map<String, Object>>() {
                                                         });
                                 }
                         }
@@ -161,7 +165,7 @@ public class GmsService {
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .bodyValue(requestBody)
                                         .retrieve()
-                                        .bodyToMono(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
+                                        .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                                         })
                                         .block();
 
@@ -177,7 +181,7 @@ public class GmsService {
                                         if (content == null)
                                                 return false;
 
-                                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                                        ObjectMapper mapper = new ObjectMapper();
                                         JsonNode rootNode = mapper.readTree(content);
                                         String status = rootNode.path("status").asText().toUpperCase();
 

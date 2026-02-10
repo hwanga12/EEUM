@@ -15,14 +15,8 @@
       background: #000;
       color: #fff;
     }
-    .box {
-      text-align: center;
-    }
-    .sub {
-      margin-top: 8px;
-      opacity: .7;
-      font-size: 14px;
-    }
+    .box { text-align: center; }
+    .sub { margin-top: 8px; opacity: 0.7; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -31,24 +25,24 @@
     <div class="sub">서버 준비를 기다리는 중입니다</div>
   </div>
 
-<script>
-const PING = "http://localhost:8080/ping";
-const TARGET = "http://localhost:8080/";
-const INTERVAL = 1000;
+  <script>
+    const healthCheckUrl = "http://localhost:8080/ping";
+    const appUrl = "http://localhost:8080/";
+    const pollIntervalMs = 1000;
 
-async function check() {
-  try {
-    const r = await fetch(PING, { cache: "no-store" });
-    if (r.ok) {
-      // 같은 창에서 "새로고침 효과"
-      location.replace(TARGET);
-      return;
+    async function waitForServer() {
+      try {
+        const res = await fetch(healthCheckUrl, { cache: "no-store" });
+        if (res.ok) {
+          location.replace(appUrl);
+          return;
+        }
+      } catch (_) {}
+
+      setTimeout(waitForServer, pollIntervalMs);
     }
-  } catch (e) {}
-  setTimeout(check, INTERVAL);
-}
-check();
-</script>
+
+    waitForServer();
+  </script>
 </body>
 </html>
-

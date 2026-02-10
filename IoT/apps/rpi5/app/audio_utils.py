@@ -1,13 +1,13 @@
-# app/audio_utils.py
 import logging
-from .sh import async_sh
+from app.sh import async_sh
 
 logger = logging.getLogger(__name__)
 
-async def ensure_master_volume_100():
+async def ensure_master_volume_100() -> None:
     """
-    시스템 Master 볼륨을 100%로 고정
-    (aplay / ffmpeg 증폭 전제)
+    시스템 Master 볼륨을 100%로 고정합니다.
+
+    :return: 없음
     """
     try:
         await async_sh(

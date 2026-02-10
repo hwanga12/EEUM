@@ -1,92 +1,102 @@
-# app/sync_gate.py
 import asyncio
 import logging
-import time
-
-from .monitor import refresh_wifi_active
-from .album_sync import async_sync_album_once
-from .voice_sync import async_sync_voice_once
-from .slideshow import rebuild_playlist, emit_slide
-from .profile_cache import ensure_profile_cached
-from .voice_player import download_then_emit_new
-from .tts_service import get_default_tts_path
-from .audio_manager import AudioJob, AudioPrio
-from .config import ALARM_TTS_DEBOUNCE_SEC
+from app.album_sync import async_sync_album_once
+from app.audio_manager import AudioJob, AudioPrio
+from app.config import ALARM_TTS_DEBOUNCE_SEC
+from app.monitor import refresh_wifi_active
+from app.slideshow import rebuild_playlist, emit_slide, build_sender
+from app.sync_utils import now_ts
+from app.tts_service import get_default_tts_path
+from app.voice_player import download_then_emit_new
+from app.voice_sync import async_sync_voice_once
 
 logger = logging.getLogger(__name__)
 
 async def _wait_wifi_active(state, timeout_sec: float = 60.0, poll_sec: float = 1.0) -> bool:
     """
-    비차단 대기:
-      - await/sleep 기반이라 다른 태스크(서버/MQTT/다운로더 등) 절대 안 막음
-      - timeout 지나면 False
+    Wi-Fi 활성화를 기다립니다.
+
+    :param state: 전역 상태
+    :param timeout_sec: 최대 대기 시간(초)
+    :param poll_sec: 폴링 간격(초)
+    :return: 활성화 성공 여부
     """
-    deadline = time.time() + float(timeout_sec)
-    while time.time() < deadline and (not getattr(state, "shutting_down", False)):
+    deadline = now_ts() + float(timeout_sec)
+
+    while now_ts() < deadline and (not getattr(state, "shutting_down", False)):
         try:
             await refresh_wifi_active(state)
         except Exception:
             pass
 
-        # state.wifi_active: SSID 문자열(연결되면 truthy)
-        if state.wifi_active:
+        if getattr(state, "wifi_active", False):
             return True
 
         await asyncio.sleep(float(poll_sec))
+
     return False
 
+def _should_play_default_tts(state, kind: str) -> bool:
+    now = now_ts()
+    last_ts = state.alarm_last_tts_ts.get(kind, 0.0)
+    debounce_sec = float(ALARM_TTS_DEBOUNCE_SEC or 0)
+    return (now - last_ts) >= debounce_sec
+
+async def _play_voice_default_tts_once(state, *, has_new_voice: bool, reason: str) -> None:
+    if not has_new_voice:
+        return
+
+    kind = "voice"
+    if not _should_play_default_tts(state, kind):
+        return
+
+    state.alarm_last_tts_ts[kind] = now_ts()
+    path = get_default_tts_path(kind)
+    if not path:
+        logger.info("[voice_default] (%s) skip missing_default", reason)
+        return
+
+    await state.audio.enqueue(
+        AudioJob(
+            prio=int(AudioPrio.VOICE),
+            kind="voice",
+            path=path,
+            ttl_sec=300.0,
+            replace_key="voice.default.latest",
+        )
+    )
+    logger.debug("[voice_default] (%s) play path=%s", reason, path)
+
+async def _download_and_emit_new_voices(state, inserted_ids: list[int]) -> None:
+    for vid in inserted_ids:
+        v = state.voice_repo.get(int(vid)) if state.voice_repo else None
+        if not v:
+            continue
+
+        url = str(v.get("url") or "")
+        desc = str(v.get("description") or "")
+
+        uid = v.get("user_id")
+        sender = await build_sender(state, uid)
+        await download_then_emit_new(state, int(vid), url, desc, sender)
+
 async def initial_sync_worker(state, *, timeout_sec: float = 60.0) -> None:
-    """
-    - wifi active 될 때까지 기다렸다가
-    - album/voice sync 1회 실행
-    - 끝나면 종료(태스크 종료)
-    - 시작/중복 방지는 schedule_initial_sync에서 처리
-    """
     try:
         ok_wifi = await _wait_wifi_active(state, timeout_sec=timeout_sec, poll_sec=1.0)
         if not ok_wifi:
             logger.warning("[initial_sync] wifi not active within timeout=%ss -> skip", timeout_sec)
             return
 
-        # wifi OK -> sync 1회
         res_album = await async_sync_album_once(state)
         res_voice = await async_sync_voice_once(state)
+        inserted_ids = res_voice.get("inserted_ids") or []
 
-        # 최초 sync에서도 voice는 "신규(inserted)"만 다운로드 후 SSE 1회 emit
-        try:
-            inserted_ids = res_voice.get("inserted_ids") or []
-            for vid in inserted_ids:
-                v = state.voice_repo.get(int(vid)) if state.voice_repo else None
-                if not v:
-                    continue
+        if inserted_ids:
+            try:
+                await _download_and_emit_new_voices(state, [int(x) for x in inserted_ids])
+            except Exception:
+                logger.exception("[initial_sync] voice download/emit failed (non-fatal)")
 
-                url = str(v.get("url") or "")
-                desc = str(v.get("description") or "")
-
-                uid = v.get("user_id")
-                try:
-                    uid = int(uid) if uid is not None else None
-                except Exception:
-                    uid = None
-
-                name = ""
-                profile_url = ""
-                if uid is not None and getattr(state, "member_repo", None):
-                    m = state.member_repo.get(uid) or {}
-                    name = str(m.get("name") or "")
-                    profile_url = str(m.get("profile_image_url") or "")
-
-                if profile_url and getattr(state, "http_session", None) and (not state.http_session.closed):
-                    profile_url = await ensure_profile_cached(
-                        state.http_session, profile_url, timeout_sec=8.0
-                    )
-
-                sender = {"user_id": uid, "name": name, "profile_image_url": profile_url}
-                await download_then_emit_new(state, int(vid), url, desc, sender)
-        except Exception:
-            logger.exception("[initial_sync] voice download/emit failed (non-fatal)")
-
-        # album sync 성공이면 playlist 갱신 + 현재 슬라이드 emit (원래 부팅/토큰 로직과 동일 의도)
         if res_album.get("ok"):
             rebuild_playlist(state)
             try:
@@ -94,28 +104,8 @@ async def initial_sync_worker(state, *, timeout_sec: float = 60.0) -> None:
             except Exception:
                 logger.exception("[initial_sync] emit_slide failed")
 
-        # 최초 sync에서도 voice added가 있으면 default TTS 1회(디바운스)
         try:
-            # inserted_ids 기준으로 "진짜 신규"가 있을 때만
-            inserted_ids = res_voice.get("inserted_ids") or []
-            if inserted_ids:
-                kind = "voice"
-                now = time.time()
-                last = state.alarm_last_tts_ts.get(kind, 0.0)
-                if (now - last) >= float(ALARM_TTS_DEBOUNCE_SEC or 0):
-                    state.alarm_last_tts_ts[kind] = now
-                    path = get_default_tts_path(kind)
-                    if path:
-                        await state.audio.enqueue(AudioJob(
-                            prio=int(AudioPrio.VOICE),
-                            kind="voice",
-                            path=path,
-                            ttl_sec=300.0,
-                            replace_key="voice.default.latest",
-                        ))
-                        logger.debug("[voice_default] (initial_sync) play path=%s", path)
-                    else:
-                        logger.info("[voice_default] (initial_sync) skip missing_default")
+            await _play_voice_default_tts_once(state, has_new_voice=bool(inserted_ids), reason="initial_sync")
         except Exception:
             logger.exception("[initial_sync] voice default TTS failed (non-fatal)")
 
@@ -126,10 +116,7 @@ async def initial_sync_worker(state, *, timeout_sec: float = 60.0) -> None:
     except Exception:
         logger.exception("[initial_sync] unexpected error")
     finally:
-        # 1회 작업 종료 표시
         state.initial_sync_done = True
-        # 재시도 가능하게 플래그 해제
-        # (정책: 필요하면 '성공했을 때만' 재시도 막도록 조정 가능)
         try:
             state.initial_sync_started = False
         except Exception:
@@ -139,14 +126,11 @@ def schedule_initial_sync(state, *, timeout_sec: float = 60.0) -> bool:
     if getattr(state, "initial_sync_started", False):
         return False
 
-    # 토큰 없으면 시작 자체를 하지 않음
     ds = getattr(state, "device_store", None)
     token = ds.get_token() if ds else None
     if not token:
         return False
 
     state.initial_sync_started = True
-    state.initial_sync_task = asyncio.create_task(
-        initial_sync_worker(state, timeout_sec=timeout_sec)
-    )
+    state.initial_sync_task = asyncio.create_task(initial_sync_worker(state, timeout_sec=timeout_sec))
     return True

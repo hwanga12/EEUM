@@ -1,95 +1,172 @@
-# app/voice_sync.py
 import logging
 import os
 from typing import Any, Dict, List
-import time
-from .config import API_BASE_URL, VOICE_SYNC_PATH
-from .state import MonitorState
-from .http import async_http_get_json
-from .sync_utils import is_ok_status
-from .voice_player import voice_path
+from app.config import API_BASE_URL, VOICE_SYNC_PATH
+from app.http import async_http_get_json
+from app.profile_cache import remove_profile_cached
+from app.state import MonitorState
+from app.sync_utils import build_api_url, normalize_sync_response, now_ts
+from app.voice_player import voice_path
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_SYNC_PATH = "/api/iot/device/sync/voice"
 
-def _get_voice_sync_url() -> str | None:
-    base = (API_BASE_URL or "").strip().rstrip("/")
-    if not base:
-        return None
-    path = (VOICE_SYNC_PATH or DEFAULT_SYNC_PATH).strip()
-    if not path.startswith("/"):
-        path = "/" + path
-    return base + path
+def _safe_remove(path: str) -> None:
+    try:
+        if path and os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        pass
 
-def _extract_data(resp_json: Dict[str, Any]) -> Dict[str, Any]:
-    status = resp_json.get("statusCode")
-    ok = is_ok_status(status)
-    if not ok:
-        msg = (resp_json.get("message") or resp_json.get("msg") or "voice sync failed").strip()
-        logger.warning("[voice_sync] not-ok status=%r msg=%r body=%s", status, msg, resp_json)
-        raise ValueError(msg or "voice sync failed")
+def _remove_local_voice_files(vid: int) -> None:
+    """
+    로컬에 저장된 voice 파일을 제거합니다.
 
-    data = resp_json.get("data")
-    if not isinstance(data, dict):
-        data = {}
-
-    if "added" not in data or not isinstance(data.get("added"), list):
-        data["added"] = []
-    if "deleted" not in data or not isinstance(data.get("deleted"), list):
-        data["deleted"] = []
-
-    if "lastLogId" in data and "log_id" not in data:
-        data["log_id"] = data.get("lastLogId")
-
-    return data
-
-def _remove_local_voice_file(vid: int) -> None:
-    p = voice_path(vid)
-    tmp = p + ".tmp"
-    for fp in (p, tmp):
-        try:
-            if os.path.exists(fp):
-                os.remove(fp)
-        except Exception:
-            pass
+    :param vid: voice id
+    :return: 없음
+    """
+    base = voice_path(vid)
+    _safe_remove(base)
+    _safe_remove(base + ".tmp")
 
 def _normalize_members(data: Dict[str, Any]) -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
+    """
+    members 필드를 내부 표준 형태로 정규화합니다.
+
+    :param data: sync data
+    :return: 정규화된 members 리스트
+    """
     members = data.get("members") or []
     if not isinstance(members, list):
-        return out
+        return []
 
+    out: List[Dict[str, Any]] = []
     for m in members:
         if not isinstance(m, dict):
             continue
-        uid = m.get("user_id") or m.get("userId")
+        uid_raw = m.get("user_id") or m.get("userId")
         try:
-            uid = int(uid)
+            uid = int(uid_raw)
         except Exception:
             continue
 
-        out.append({
-            "user_id": uid,
-            "name": str(m.get("name") or ""),
-            "profile_image_url": str(m.get("profile_image_url") or m.get("profileImageUrl") or ""),
-        })
+        out.append(
+            {
+                "user_id": uid,
+                "name": str(m.get("name") or ""),
+                "profile_image_url": str(
+                    m.get("profile_image_url") or m.get("profileImageUrl") or ""
+                ),
+            }
+        )
     return out
 
-async def async_sync_voice_once(state: MonitorState) -> Dict[str, Any]:
+def _upsert_members_and_cache(state: MonitorState, members: List[Dict[str, Any]]) -> None:
+    """
+    members를 DB에 upsert하고, 메모리 캐시도 갱신합니다.
+    profile_image_url 변경 시, 이전 캐시 파일은 best-effort로 제거합니다.
+
+    :param state: 전역 상태
+    :param members: 정규화된 members 리스트
+    :return: None
+    """
+    if not members:
+        return
+
+    if state.member_repo:
+        try:
+            def _on_changed(old_profile_url: str | None) -> None:
+                # old_profile_url은 "이전 URL"이므로, 그 URL에 해당하는 캐시 파일 제거
+                try:
+                    if old_profile_url:
+                        remove_profile_cached(str(old_profile_url))
+                except Exception:
+                    pass
+
+            state.member_repo.upsert_many_with_change_detection(members, on_changed=_on_changed)
+        except Exception:
+            logger.exception("[voice_sync] member upsert failed")
+
+    try:
+        for m in members:
+            uid = int(m["user_id"])
+            state.member_cache[uid] = {
+                "user_id": uid,
+                "name": str(m.get("name") or ""),
+                "profile_image_url": str(m.get("profile_image_url") or ""),
+                "updated_at": now_ts(),
+            }
+        state.member_cache_loaded = True
+        state.member_cache_ts = now_ts()
+    except Exception:
+        logger.exception("[voice_sync] member_cache update failed")
+
+def _normalize_added_voices(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    added voice 리스트를 내부 표준 형태로 정규화합니다.
+
+    :param data: sync data
+    :return: 정규화된 added 리스트
+    """
+    added = data.get("added") or []
+    if not isinstance(added, list):
+        return []
+
+    out: List[Dict[str, Any]] = []
+    for v in added:
+        if not isinstance(v, dict) or "id" not in v or "url" not in v:
+            continue
+
+        uid_raw = v.get("userId") or v.get("user_id")
+        try:
+            uid = int(uid_raw) if uid_raw is not None else None
+        except Exception:
+            uid = None
+
+        out.append(
+            {
+                "id": int(v["id"]),
+                "url": str(v["url"]),
+                "description": str(v.get("description") or ""),
+                "userId": uid,
+            }
+        )
+
+    return out
+
+def _sync_prerequisite_check(state: MonitorState) -> tuple[bool, dict]:
     if not state.voice_repo:
-        return {"ok": False, "message": "voice_repo not initialized"}
+        return False, {"ok": False, "message": "voice_repo not initialized"}
     if not state.device_store:
-        return {"ok": False, "message": "device_store not initialized"}
+        return False, {"ok": False, "message": "device_store not initialized"}
 
     token = state.device_store.get_token()
     if not token:
-        return {"ok": False, "message": "token missing"}
+        return False, {"ok": False, "message": "token missing"}
 
-    url = _get_voice_sync_url()
+    url = build_api_url(API_BASE_URL, VOICE_SYNC_PATH, DEFAULT_SYNC_PATH)
     if not url:
         logger.warning("[voice_sync] API disabled (API_BASE_URL missing/empty)")
-        return {"ok": False, "message": "api disabled"}
+        return False, {"ok": False, "message": "api disabled"}
+
+    return True, {"token": token, "url": url}
+
+async def async_sync_voice_once(state: MonitorState) -> Dict[str, Any]:
+    """
+    단발성 voice sync를 수행합니다.
+    - members upsert 및 캐시 갱신(있을 때만)
+    - added/deleted 반영 및 로컬 파일 삭제
+
+    :param state: 전역 상태
+    :return: sync 결과 dict
+    """
+    ok, info = _sync_prerequisite_check(state)
+    if not ok:
+        return info
+
+    token = info["token"]
+    url = info["url"]
 
     repo = state.voice_repo
     last_log_id = repo.get_last_log_id()
@@ -98,61 +175,24 @@ async def async_sync_voice_once(state: MonitorState) -> Dict[str, Any]:
     params = {"lastLogId": last_log_id}
 
     resp = await async_http_get_json(state, url, headers=headers, params=params, timeout_sec=10.0)
-    data = _extract_data(resp)
 
-    # 1) members upsert (있으면)
-    if state.member_repo:
-        ms = _normalize_members(data)
-        if ms:
-            try:
-                state.member_repo.upsert_many_with_change_detection(ms)
-            except Exception:
-                logger.exception("[voice_sync] member upsert failed")
+    data, _, _ = normalize_sync_response(resp, service="voice")
 
-            try:
-                for m in ms:
-                    uid = int(m["user_id"])
-                    state.member_cache[uid] = {
-                        "user_id": uid,
-                        "name": str(m.get("name") or ""),
-                        "profile_image_url": str(m.get("profile_image_url") or ""),
-                        "updated_at": time.time(),
-                    }
-                state.member_cache_loaded = True
-                state.member_cache_ts = time.time()
-            except Exception:
-                logger.exception("[voice_sync] member_cache update failed")
+    members = _normalize_members(data)
+    _upsert_members_and_cache(state, members)
 
-    # 2) added normalize
-    normalized_added: List[Dict[str, Any]] = []
-    for v in data.get("added", []):
-        if not isinstance(v, dict) or "id" not in v or "url" not in v:
-            continue
-
-        uid = v.get("userId") or v.get("user_id")
-        try:
-            uid = int(uid) if uid is not None else None
-        except Exception:
-            uid = None
-
-        normalized_added.append({
-            "id": int(v["id"]),
-            "url": str(v["url"]),
-            "description": str(v.get("description") or ""),
-            "userId": uid,
-        })
+    normalized_added = _normalize_added_voices(data)
 
     sync_delta = {
-        "log_id": data.get("log_id") or data.get("lastLogId") or last_log_id,
+        "log_id": data.get("log_id") or last_log_id,
         "added": normalized_added,
         "deleted": data.get("deleted") or [],
     }
 
-    # 반환값 변경 반영
     new_log, add_cnt, del_cnt, deleted_ids, inserted_ids = repo.apply_sync_delta(sync_delta)
 
     for vid in deleted_ids:
-        _remove_local_voice_file(int(vid))
+        _remove_local_voice_files(int(vid))
 
     added_ids = [int(x["id"]) for x in normalized_added]
 
@@ -162,7 +202,7 @@ async def async_sync_voice_once(state: MonitorState) -> Dict[str, Any]:
         "added_ids": added_ids,
         "deleted": del_cnt,
         "deleted_ids": deleted_ids,
-        "inserted_ids": inserted_ids,  # 디버그용
+        "inserted_ids": inserted_ids,
         "last_log_id": last_log_id,
         "new_log_id": new_log,
     }

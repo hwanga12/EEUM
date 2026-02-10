@@ -93,36 +93,31 @@ journalctl --user -u eeum-kiosk.service -f
 #!/usr/bin/env bash
 set -euo pipefail
 
-WAIT_HTML="${WAIT_HTML:-/home/a105/eeum/wait.html}"
-USER_DATA_DIR="${USER_DATA_DIR:-/tmp/eeum-chrome}"
+waitHtmlPath="${WAIT_HTML:-/home/a105/eeum/wait.html}"
+chromeProfileDir="${USER_DATA_DIR:-/tmp/eeum-chrome}"
 
-BROWSER=""
-for c in chromium chromium-browser; do
-  if command -v "$c" >/dev/null 2>&1; then
-    BROWSER="$c"
+browserCmd=""
+for candidate in chromium chromium-browser; do
+  if command -v "$candidate" >/dev/null 2>&1; then
+    browserCmd="$candidate"
     break
   fi
 done
-if [[ -z "${BROWSER}" ]]; then
-  exit 1
-fi
+[[ -n "$browserCmd" ]] || exit 1
 
-if [[ -f "$WAIT_HTML" ]]; then
-  WAIT_URL="file://${WAIT_HTML}"
-else
-  WAIT_URL="about:blank"
-fi
+waitUrl="about:blank"
+[[ -f "$waitHtmlPath" ]] && waitUrl="file://${waitHtmlPath}"
 
 gsettings set org.gnome.desktop.a11y.applications screen-keyboard-enabled true >/dev/null 2>&1 || true
 
-exec "$BROWSER" \
+exec "$browserCmd" \
   --ozone-platform=wayland \
   --enable-features=UseOzonePlatform \
   --enable-wayland-ime \
   --wayland-text-input-version=3 \
-  --app="$WAIT_URL" \
+  --app="$waitUrl" \
   --start-maximized \
-  --user-data-dir="$USER_DATA_DIR" \
+  --user-data-dir="$chromeProfileDir" \
   --incognito \
   --password-store=basic \
   --use-mock-keychain \

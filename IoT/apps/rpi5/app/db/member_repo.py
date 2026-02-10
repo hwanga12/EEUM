@@ -1,12 +1,17 @@
-# app/db/member_repo.py
-import time
 from typing import Any, Dict, List, Optional
+from app.sync_utils import now_ts
 
 class MemberRepo:
     def __init__(self, conn):
         self.conn = conn
 
     def get(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """
+        members 단건을 조회합니다.
+
+        :param user_id: 사용자 ID
+        :return: 레코드(dict) 또는 None
+        """
         row = self.conn.execute(
             "SELECT user_id, name, profile_image_url, updated_at FROM members WHERE user_id=?",
             (int(user_id),),
@@ -14,6 +19,11 @@ class MemberRepo:
         return dict(row) if row else None
 
     def list_all(self) -> List[Dict[str, Any]]:
+        """
+        members 전체를 조회합니다.
+
+        :return: 목록
+        """
         rows = self.conn.execute(
             "SELECT user_id, name, profile_image_url, updated_at FROM members"
         ).fetchall()
@@ -23,14 +33,17 @@ class MemberRepo:
         self,
         members: List[Dict[str, Any]],
         *,
-        on_changed=None,  # fn(old_profile_url:str|None)
+        on_changed=None,
     ) -> int:
         """
-        members: [{"user_id":int,"name":str,"profile_image_url":str}, ...]
-        변경(이름/프로필URL) 있는 것만 반영.
-        변경 시 on_changed(old_profile_url) 호출해서 캐시 삭제 트리거.
+        변경(이름/프로필URL)이 있는 항목만 upsert 합니다.
+        변경이 발생하면 on_changed(old_profile_url)를 호출할 수 있습니다.
+
+        :param members: [{"user_id":int,"name":str,"profile_image_url":str}, ...]
+        :param on_changed: 변경 시 호출할 콜백(이전 profile_image_url 전달)
+        :return: 변경되어 반영된 개수
         """
-        now = time.time()
+        now = now_ts()
         changed = 0
 
         with self.conn:
@@ -55,9 +68,8 @@ class MemberRepo:
                     old_name = str(old["name"] or "")
                     old_purl = str(old["profile_image_url"] or "")
                     if old_name == name and old_purl == purl:
-                        continue  # no-op
+                        continue
 
-                    # changed -> delete cache first
                     if on_changed:
                         on_changed(old_purl or None)
 

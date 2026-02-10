@@ -2,190 +2,227 @@
 #include <HTTPClient.h>
 #include <esp_wifi.h>
 
-// ==================================================
-// AP 정보
-// ==================================================
-static const char* AP_SSID = "A105-RPI-PROV";
-static const char* AP_PASS = "A1051234";
+/**
+ * @summary ESP32 PIR 이벤트를 RPi(프로비저닝 AP)로 전송합니다.
+ * - PIR 상승 에지 ISR로 이벤트 감지
+ * - 소프트 디바운스로 노이즈/떨림 최소화
+ * - 이벤트는 최소 간격 정책으로 전송 제한
+ * - 이벤트가 없으면 주기적으로 ping 전송
+ */
 
-// ==================================================
-// 서버 정보
-// ==================================================
-static const char* SERVER_HOST = "192.168.4.1";
-static const uint16_t SERVER_PORT = 8080;
-static const char* EVENT_ENDPOINT = "/eeum/event";
-static const char* PING_ENDPOINT  = "/api/device/ping";
+/* ===== Wi-Fi / 서버 설정 ===== */
+static const char* apSsid = "A105-RPI-PROV";
+static const char* apPass = "A1051234";
 
-// ==================================================
-// 디바이스 정보
-// ==================================================
-static const char* DEVICE_NAME = "EEUM-E105-1";
+static const char* serverHost = "192.168.4.1";
+static const uint16_t serverPort = 8080;
 
-// ==================================================
-// PIR
-// ==================================================
-static const int PIR_PIN = 27;
-static const int DEBUG_DIV = 60;
+static const char* eventEndpoint = "/eeum/event";
+static const char* pingEndpoint  = "/api/device/ping";
 
-// ==================================================
-// 정책
-// ==================================================
-static const uint32_t WARMUP_MS = 60 * 1000UL / DEBUG_DIV;
-static const uint32_t MIN_PIR_INTERVAL_MS = 10 * 60 * 1000UL / DEBUG_DIV;
-static const uint32_t WIFI_CONNECT_TIMEOUT_MS = 15000;
+/* ===== 디바이스 식별 ===== */
+static const char* deviceId = "EEUM-E105-1";
+static const char* deviceKind = "pir";
 
-// PING 정책
-static const uint32_t PING_INTERVAL_MS = 10 * 60 * 1000UL / DEBUG_DIV;
-static const uint32_t PING_RETRY_COOLDOWN_MS = 5000 / DEBUG_DIV;
+/* ===== PIR 핀 ===== */
+static const int pirPin = 27;
 
-// ==================================================
-// ISR 플래그
-// ==================================================
+/* ===== 정책(운영/시연) ===== */
+struct Policy {
+  uint32_t warmupMs;        // 부팅 직후 센서 안정화 시간
+  uint32_t minEventGapMs;   // 이벤트 전송 최소 간격
+  uint32_t pingIntervalMs;  // 마지막 전송 이후 ping 주기
+};
+
+static const Policy demoPolicy = {
+  3000,
+  10000,
+  30000,
+};
+
+static const Policy prodPolicy = {
+  60 * 1000UL,
+  10 * 60 * 1000UL,
+  10 * 60 * 1000UL,
+};
+
+/* 시연 모드: true면 demoPolicy, false면 prodPolicy */
+static const bool demoMode = true;
+
+/* ===== 공통 타임아웃 ===== */
+static const uint32_t wifiConnectTimeoutMs = 15000;
+static const uint32_t httpConnectTimeoutMs = 3000;
+static const uint32_t httpTotalTimeoutMs   = 5000;
+static const uint32_t pingRetryCooldownMs  = 5000;
+
+/* ===== 소프트 디바운스 =====
+ * ISR 발생 후 너무 가까운 시점의 처리는 버립니다.
+ * (센서 노이즈/짧은 떨림 방지용)
+ */
+static const uint32_t pirSoftDebounceMs = 150;
+
+/* ===== ISR 플래그 ===== */
 volatile bool pirRiseFlag = false;
 volatile uint32_t pirIsrMs = 0;
 
-// ==================================================
-// 전송 타이머 상태
-// ==================================================
-static uint32_t g_lastTxMs = 0;
-static uint32_t g_nextPirAllowedMs = 0;
-static uint32_t g_lastPingTryMs = 0;
-
-// ==================================================
-// PIR ISR
-// ==================================================
+/**
+ * @summary PIR 상승 에지 ISR
+ * - ISR에서는 최소 작업만 수행(시간 기록 + 플래그)
+ */
 void IRAM_ATTR onPirRise() {
   pirIsrMs = millis();
   pirRiseFlag = true;
 }
 
-// ==================================================
-// Wi-Fi 유틸
-// ==================================================
+/* ===== 상태 ===== */
+static uint32_t lastTxMs = 0;
+static uint32_t nextPirAllowedMs = 0;
+static uint32_t lastPingTryMs = 0;
+
+/**
+ * @summary 현재 모드에 맞는 정책을 반환합니다.
+ * @returns Policy 참조
+ */
+static const Policy& policy() {
+  return demoMode ? demoPolicy : prodPolicy;
+}
+
+/**
+ * @summary Wi-Fi 절전 모드를 설정합니다.
+ */
 static void setupWifiPowerSave() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(true);
   esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
 }
 
+/**
+ * @summary AP에 연결되어 있지 않으면 연결을 보장합니다.
+ */
 static void ensureWifiConnected() {
   if (WiFi.status() == WL_CONNECTED) return;
 
   setupWifiPowerSave();
-  WiFi.begin(AP_SSID, AP_PASS);
+  WiFi.begin(apSsid, apPass);
 
   uint32_t start = millis();
   while (WiFi.status() != WL_CONNECTED) {
     delay(200);
-    if (millis() - start > WIFI_CONNECT_TIMEOUT_MS) {
+
+    if (millis() - start > wifiConnectTimeoutMs) {
       WiFi.disconnect(false);
       delay(200);
-      WiFi.begin(AP_SSID, AP_PASS);
+      WiFi.begin(apSsid, apPass);
       start = millis();
     }
   }
 }
 
-// ==================================================
-// HTTP POST 공통
-// ==================================================
-static bool httpPostJson(const char* endpoint, const String& body) {
+/**
+ * @summary JSON을 HTTP POST로 전송합니다.
+ * @param endpoint 서버 엔드포인트 경로
+ * @param body JSON 문자열
+ * @returns 성공 여부(HTTP code 1~399)
+ */
+static bool postJson(const char* endpoint, const String& body) {
   ensureWifiConnected();
 
-  String url = String("http://") + SERVER_HOST + ":" + SERVER_PORT + endpoint;
+  String url = String("http://") + serverHost + ":" + serverPort + endpoint;
 
   HTTPClient http;
-  http.setConnectTimeout(3000);
-  http.setTimeout(5000);
+  http.setConnectTimeout(httpConnectTimeoutMs);
+  http.setTimeout(httpTotalTimeoutMs);
 
   if (!http.begin(url)) return false;
-  http.addHeader("Content-Type", "application/json");
 
+  http.addHeader("Content-Type", "application/json");
   int code = http.POST((uint8_t*)body.c_str(), body.length());
   http.end();
 
   return (code > 0 && code < 400);
 }
 
-// ==================================================
-// PIR 전송
-// ==================================================
-static bool postPirMotion() {
-  String body = "{";
-  body += "\"kind\":\"pir\",";
-  body += "\"device_id\":\"" + String(DEVICE_NAME) + "\",";
-  body += "\"data\":{";
-  body += "\"event\":\"motion\",";
-  body += "\"value\":1";
-  body += "}}";
-
-  return httpPostJson(EVENT_ENDPOINT, body);
+/**
+ * @summary PIR 이벤트 payload를 생성합니다.
+ * @returns JSON 문자열
+ */
+static String buildPirBody() {
+  return String("{\"kind\":\"") + deviceKind +
+         "\",\"device_id\":\"" + deviceId +
+         "\",\"data\":{\"event\":\"motion\",\"value\":1}}";
 }
 
-// ==================================================
-// PING 전송
-// ==================================================
-static bool postPing() {
-  String body = "{";
-  body += "\"device_id\":\"" + String(DEVICE_NAME) + "\",";
-  body += "\"kind\":\"pir\"";
-  body += "}";
-
-  return httpPostJson(PING_ENDPOINT, body);
+/**
+ * @summary ping payload를 생성합니다.
+ * @returns JSON 문자열
+ */
+static String buildPingBody() {
+  return String("{\"device_id\":\"") + deviceId +
+         "\",\"kind\":\"" + deviceKind + "\"}";
 }
 
-// ==================================================
-// setup()
-// ==================================================
+/**
+ * @summary PIR 이벤트를 전송합니다.
+ * @returns 성공 여부
+ */
+static bool sendPirEvent() {
+  return postJson(eventEndpoint, buildPirBody());
+}
+
+/**
+ * @summary ping을 전송합니다.
+ * @returns 성공 여부
+ */
+static bool sendPing() {
+  return postJson(pingEndpoint, buildPingBody());
+}
+
 void setup() {
-  pinMode(PIR_PIN, INPUT_PULLDOWN);
+  pinMode(pirPin, INPUT_PULLDOWN);
 
   ensureWifiConnected();
-  attachInterrupt(digitalPinToInterrupt(PIR_PIN), onPirRise, RISING);
+  attachInterrupt(digitalPinToInterrupt(pirPin), onPirRise, RISING);
 
-  postPing();
-  g_lastTxMs = millis();
+  sendPing();
+  lastTxMs = millis();
 }
 
-// ==================================================
-// loop()
-// ==================================================
 void loop() {
-  uint32_t now = millis();
+  const uint32_t now = millis();
+  const Policy& p = policy();
 
-  // ---------- PIR 처리 ----------
   bool fired = false;
-  uint32_t isrT = 0;
+  uint32_t isrMs = 0;
 
   noInterrupts();
   if (pirRiseFlag) {
     fired = true;
-    isrT = pirIsrMs;
+    isrMs = pirIsrMs;
     pirRiseFlag = false;
   }
   interrupts();
 
   if (fired) {
-    if (now >= WARMUP_MS &&
-        (int32_t)(now - g_nextPirAllowedMs) >= 0 &&
-        digitalRead(PIR_PIN) == HIGH) {
+    const bool warmupOk = now >= p.warmupMs;
+    const bool intervalOk = (int32_t)(now - nextPirAllowedMs) >= 0;
+    const bool softDebounceOk = (now - isrMs) >= pirSoftDebounceMs;
+    const bool pinHigh = digitalRead(pirPin) == HIGH;
 
-      bool ok = postPirMotion();
-      if (ok) {
-        g_lastTxMs = now;
-        g_nextPirAllowedMs = now + MIN_PIR_INTERVAL_MS;
+    if (warmupOk && intervalOk && softDebounceOk && pinHigh) {
+      if (sendPirEvent()) {
+        lastTxMs = now;
+        nextPirAllowedMs = now + p.minEventGapMs;
       }
     }
   }
 
-  // ---------- PING 처리 ----------
-  if ((now - g_lastTxMs) >= PING_INTERVAL_MS) {
-    if ((now - g_lastPingTryMs) >= PING_RETRY_COOLDOWN_MS) {
-      g_lastPingTryMs = now;
-      bool ok = postPing();
-      if (ok) {
-        g_lastTxMs = now;
-      }
+  const bool needPing = (now - lastTxMs) >= p.pingIntervalMs;
+  const bool canRetryPing = (now - lastPingTryMs) >= pingRetryCooldownMs;
+
+  if (needPing && canRetryPing) {
+    lastPingTryMs = now;
+    if (sendPing()) {
+      lastTxMs = now;
     }
   }
 

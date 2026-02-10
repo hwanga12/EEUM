@@ -1,42 +1,31 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WAIT_HTML="${WAIT_HTML:-/home/a105/eeum/wait.html}"
-USER_DATA_DIR="${USER_DATA_DIR:-/tmp/eeum-chrome}"
+waitHtmlPath="${WAIT_HTML:-/home/a105/eeum/wait.html}"
+chromeProfileDir="${USER_DATA_DIR:-/tmp/eeum-chrome}"
 
-# ----- find browser -----
-BROWSER=""
-for c in chromium chromium-browser; do
-  if command -v "$c" >/dev/null 2>&1; then
-    BROWSER="$c"
+browserCmd=""
+for candidate in chromium chromium-browser; do
+  if command -v "$candidate" >/dev/null 2>&1; then
+    browserCmd="$candidate"
     break
   fi
 done
-if [[ -z "${BROWSER}" ]]; then
-  echo "[kiosk] ERROR: chromium not found"
-  exit 1
-fi
+[[ -n "$browserCmd" ]] || exit 1
 
-# ----- URL 결정 -----
-if [[ -f "$WAIT_HTML" ]]; then
-  WAIT_URL="file://${WAIT_HTML}"
-else
-  echo "[kiosk] WARN: WAIT_HTML not found: $WAIT_HTML (fallback to about:blank)"
-  WAIT_URL="about:blank"
-fi
+waitUrl="about:blank"
+[[ -f "$waitHtmlPath" ]] && waitUrl="file://${waitHtmlPath}"
 
-# ----- OSK 힌트 -----
 gsettings set org.gnome.desktop.a11y.applications screen-keyboard-enabled true >/dev/null 2>&1 || true
 
-# ----- Chromium: Wayland + OSK 반응성 핵심 옵션 -----
-exec "$BROWSER" \
+exec "$browserCmd" \
   --ozone-platform=wayland \
   --enable-features=UseOzonePlatform \
   --enable-wayland-ime \
   --wayland-text-input-version=3 \
-  --app="$WAIT_URL" \
+  --app="$waitUrl" \
   --start-maximized \
-  --user-data-dir="$USER_DATA_DIR" \
+  --user-data-dir="$chromeProfileDir" \
   --incognito \
   --password-store=basic \
   --use-mock-keychain \

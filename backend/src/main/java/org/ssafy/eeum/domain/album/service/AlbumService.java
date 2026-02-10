@@ -25,6 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 가족 앨범의 사진 관리 관련 비즈니스 로직을 처리하는 서비스 클래스입니다.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -97,7 +100,7 @@ public class AlbumService {
         }
 
         /**
-         * 가족별 사진 목록을 조회합니다 (권한 확인 포함).
+         * 가족별 사진 목록을 조회합니다.
          * 
          * @summary 사진 목록 조회
          * @param familyId 가족 식별자
@@ -110,7 +113,7 @@ public class AlbumService {
 
                 validateFamilyAccess(user, family);
 
-                return albumRepository.findAllByFamilyId(familyId).parallelStream()
+                return albumRepository.findAllByFamilyId(familyId).stream()
                                 .map(this::convertToResponse)
                                 .collect(Collectors.toList());
         }
@@ -132,7 +135,7 @@ public class AlbumService {
         }
 
         /**
-         * 사진을 삭제합니다 (업로더 혹은 대표 관리자 권한 필요).
+         * 사진을 삭제합니다. 업로더 혹은 대표 관리자 권한이 필요합니다.
          * 
          * @summary 사진 삭제
          * @param photoId         사진 식별자
@@ -152,32 +155,39 @@ public class AlbumService {
         }
 
         /**
-         * IoT 기기용 동기화 데이터를 조회합니다 (미동기화 데이터 기준).
+         * IoT 기기용 동기화 데이터를 조회하고 동기화 상태로 표시합니다.
          * 
          * @summary IoT 데이터 동기화 조회
          * @param familyId 가족 식별자
-         * @return 추가/삭제된 데이터 정보가 포함된 동기화 응답 DTO
+         * @return 추가된 데이터 정보가 포함된 동기화 응답 DTO
          */
         @Transactional
         public IotAlbumSyncResponseDTO syncForIot(Integer familyId) {
                 List<MediaAsset> unsyncedAssets = albumRepository.findAllByFamilyIdAndIsSyncedFalse(familyId);
-                List<Integer> syncedIds = new ArrayList<>();
 
-                List<AlbumSyncItemResponseDTO> addedItems = unsyncedAssets.stream()
-                                .map(asset -> {
-                                        syncedIds.add(asset.getId());
-                                        return convertToSyncItem(asset);
-                                })
-                                .collect(Collectors.toList());
-
-                if (!syncedIds.isEmpty()) {
-                        albumRepository.markAsSynced(syncedIds);
-                }
+                List<AlbumSyncItemResponseDTO> addedItems = convertToSyncItems(unsyncedAssets);
+                updateSyncedStatus(unsyncedAssets);
 
                 return IotAlbumSyncResponseDTO.builder()
                                 .added(addedItems)
                                 .deleted(new ArrayList<>())
                                 .build();
+        }
+
+        private List<AlbumSyncItemResponseDTO> convertToSyncItems(List<MediaAsset> assets) {
+                return assets.stream()
+                                .map(this::convertToSyncItem)
+                                .collect(Collectors.toList());
+        }
+
+        private void updateSyncedStatus(List<MediaAsset> assets) {
+                List<Integer> syncedIds = assets.stream()
+                                .map(MediaAsset::getId)
+                                .collect(Collectors.toList());
+
+                if (!syncedIds.isEmpty()) {
+                        albumRepository.markAsSynced(syncedIds);
+                }
         }
 
         // --- Helper Methods ---

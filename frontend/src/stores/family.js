@@ -230,6 +230,16 @@ export const useFamilyStore = defineStore('family', () => {
     }
   }
 
+  /**
+   * 보양이(피보호자) 정보 Getter
+   * 현재 선택된 가족의 멤버 중 dependent가 true인 멤버 반환
+   */
+  const dependent = computed(() => {
+    if (!selectedFamily.value) return null;
+    const members = membersCache.value[selectedFamily.value.id] || [];
+    return members.find((m) => m.dependent || m.isDependent);
+  });
+
   return {
     families,
     selectedFamily,

@@ -5,8 +5,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
-import java.util.function.BiConsumer;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -88,33 +89,32 @@ public class FcmService {
     private Message createMessage(String token, String title, String body, String type, Long notificationId,
             String route,
             Integer familyId, String groupName, Integer eventId) {
-        Message.Builder builder = Message.builder()
+        return Message.builder()
                 .setToken(token)
-                .setAndroidConfig(createAndroidConfig());
-
-        addData(builder::putData, title, body, type, notificationId, route, familyId, groupName, eventId);
-        return builder.build();
+                .setAndroidConfig(createAndroidConfig())
+                .putAllData(createDataMap(title, body, type, notificationId, route, familyId, groupName, eventId))
+                .build();
     }
 
-    private void addData(BiConsumer<String, String> dataAdder, String title, String body,
-            String type,
+    private Map<String, String> createDataMap(String title, String body, String type,
             Long notificationId, String route, Integer familyId, String groupName, Integer eventId) {
-
-        dataAdder.accept("type", type != null ? type : DEFAULT_TYPE);
+        Map<String, String> data = new HashMap<>();
+        data.put("type", type != null ? type : DEFAULT_TYPE);
         if (title != null)
-            dataAdder.accept("title", title);
+            data.put("title", title);
         if (body != null)
-            dataAdder.accept("body", body);
+            data.put("body", body);
         if (notificationId != null)
-            dataAdder.accept("notificationId", String.valueOf(notificationId));
+            data.put("notificationId", String.valueOf(notificationId));
         if (familyId != null)
-            dataAdder.accept("familyId", String.valueOf(familyId));
+            data.put("familyId", String.valueOf(familyId));
         if (groupName != null)
-            dataAdder.accept("groupName", groupName);
+            data.put("groupName", groupName);
         if (route != null)
-            dataAdder.accept("route", route);
+            data.put("route", route);
         if (eventId != null)
-            dataAdder.accept("eventId", String.valueOf(eventId));
+            data.put("eventId", String.valueOf(eventId));
+        return data;
     }
 
     private AndroidConfig createAndroidConfig() {

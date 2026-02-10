@@ -12,6 +12,7 @@ import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * API 요청 및 응답 정보를 로깅하기 위한 필터 클래스입니다.
@@ -24,6 +25,9 @@ import java.io.IOException;
 public class ApiLoggingFilter extends OncePerRequestFilter {
     @Value("${eeum.log.max-payload-length:500}")
     private int maxPayloadLength;
+
+    @Value("${eeum.log.exclude-paths:/swagger-ui,/v3/api-docs,/favicon.ico}")
+    private List<String> excludePaths;
 
     /**
      * 요청을 가로채서 로깅 처리를 수행합니다.
@@ -103,13 +107,9 @@ public class ApiLoggingFilter extends OncePerRequestFilter {
         return ip;
     }
 
-    private static final String SWAGGER_UI_PATH = "/swagger-ui";
-    private static final String SWAGGER_DOCS_PATH = "/v3/api-docs";
-    private static final String FAVICON_PATH = "/favicon.ico";
-
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return path.startsWith(SWAGGER_UI_PATH) || path.startsWith(SWAGGER_DOCS_PATH) || path.startsWith(FAVICON_PATH);
+        return excludePaths.stream().anyMatch(path::startsWith);
     }
 }

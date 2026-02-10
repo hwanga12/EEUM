@@ -23,7 +23,8 @@ import org.ssafy.eeum.global.error.exception.CustomException;
 import org.ssafy.eeum.global.error.model.ErrorCode;
 import org.ssafy.eeum.global.infra.s3.S3Service;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -105,8 +106,8 @@ public class MessageService {
                 List<Message> messages = messageRepository.findAllByGroupAndDeletedAtIsNullOrderByCreatedAtAsc(group);
                 List<Supporter> supporters = supporterRepository.findAllByFamily(group);
 
-                java.util.Map<Integer, Supporter> supporterMap = supporters.stream()
-                                .collect(java.util.stream.Collectors.toMap(
+                Map<Integer, Supporter> supporterMap = supporters.stream()
+                                .collect(Collectors.toMap(
                                                 s -> s.getUser().getId(),
                                                 s -> s,
                                                 (existing, replacement) -> existing));
@@ -177,9 +178,9 @@ public class MessageService {
         public IotAlbumSyncResponseDTO syncForIot(Integer familyId) {
                 List<Message> unsyncedMessages = messageRepository.findAllByGroupIdAndIsSyncedFalse(familyId);
 
-                List<AlbumSyncItemResponseDTO> addedItems = new java.util.ArrayList<>();
-                List<Integer> deletedIds = new java.util.ArrayList<>();
-                List<Integer> syncedIds = new java.util.ArrayList<>();
+                List<AlbumSyncItemResponseDTO> addedItems = new ArrayList<>();
+                List<Integer> deletedIds = new ArrayList<>();
+                List<Integer> syncedIds = new ArrayList<>();
 
                 for (Message msg : unsyncedMessages) {
                         if (msg.getDeletedAt() != null) {

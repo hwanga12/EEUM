@@ -15,6 +15,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.UUID;
 
@@ -74,7 +75,7 @@ public class MqttConfig {
                         public void checkServerTrusted(X509Certificate[] certs, String authType) {
                         }
                     }
-            }, new java.security.SecureRandom());
+            }, new SecureRandom());
             options.setSocketFactory(sslContext.getSocketFactory());
         } catch (Exception e) {
             log.error("MQTT SSL/TLS 설정 중 오류가 발생했습니다: {}", e.getMessage());

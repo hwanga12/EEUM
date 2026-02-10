@@ -8,6 +8,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.ssafy.eeum.global.common.response.RestApiResponse;
 import org.ssafy.eeum.global.error.exception.CustomException;
 import org.ssafy.eeum.global.error.model.ErrorCode;
@@ -99,9 +100,9 @@ public class GlobalExceptionHandler {
          * @param e NoResourceFoundException 객체
          * @return 404 에러 응답 객체
          */
-        @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+        @ExceptionHandler(NoResourceFoundException.class)
         protected ResponseEntity<RestApiResponse<?>> handleNoResourceFoundException(
-                        org.springframework.web.servlet.resource.NoResourceFoundException e) {
+                        NoResourceFoundException e) {
                 log.warn("리소스를 찾을 수 없음 (404): {}", e.getResourcePath());
                 return ResponseEntity
                                 .status(HttpStatus.NOT_FOUND)

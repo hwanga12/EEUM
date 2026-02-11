@@ -222,3 +222,51 @@ async def download_then_emit_new(state, vid: int, url: str, desc: str, sender: d
 
 async def download_only(state, vid: int, url: str) -> str:
     return await download_voice_to_local(state, vid, url)
+
+async def voice_downloader_loop(state, interval_sec: float = 1.0, batch_limit: int = 10):
+    """
+    - voice_downloads 기반으로 pending/failed(+stuck downloading) 다운로드
+    - state.download_sem으로 동시 다운로드 제한 (album과 공유)
+    - 오디오 재생 / STT / heavy_ops_pause / wifi_busy 중에는 I/O 경쟁 방지로 스킵
+    """
+    repo = getattr(state, "voice_repo", None)
+    if repo is None:
+        logger.warning("[voice_dl] voice_repo missing -> loop disabled")
+        return
+
+    while not getattr(state, "shutting_down", False):
+        await asyncio.sleep(float(interval_sec))
+
+        # 바쁜 상태면 쉬기 (I/O 경쟁 방지)
+        try:
+            audio_busy = bool(getattr(state, "audio", None) and getattr(state.audio, "is_playing", False))
+        except Exception:
+            audio_busy = False
+        stt_busy = bool(getattr(state, "stt_busy", False))
+        paused = bool(getattr(state, "heavy_ops_pause", False))
+        wifi_busy = bool(getattr(state, "wifi_busy", False))
+        if audio_busy or stt_busy or paused or wifi_busy:
+            continue
+
+        session = getattr(state, "http_session", None)
+        if session is None or session.closed:
+            continue
+
+        try:
+            items = repo.list_pending_downloads(limit=int(batch_limit), now=now_ts())
+            if not items:
+                continue
+
+            async def _handle_one(it: dict):
+                vid = int(it["id"])
+                url = str(it["url"])
+                # loop에서는 다운로드만 수행 (emit은 다른 곳에서 할 수도 있으니 중복 방지)
+                await download_only(state, vid, url)
+
+            tasks = [asyncio.create_task(_handle_one(it)) for it in items]
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("[voice_dl] unexpected error")

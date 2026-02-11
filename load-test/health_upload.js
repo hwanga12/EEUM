@@ -35,8 +35,8 @@ export default function () {
   const params = {
     headers: {
       "Content-Type": "application/json",
-      // JWT 인증이 필요한 경우 여기에 추가
-      // 'Authorization': `Bearer ${__ENV.MY_TOKEN}`,
+      Authorization:
+        "Bearer REDACTED_JWT",
     },
   };
 

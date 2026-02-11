@@ -14,8 +14,20 @@ export default function () {
   const groupId = 1;
   const today = new Date().toISOString().split("T")[0];
 
+  const params = {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization:
+        "Bearer REDACTED_JWT",
+    },
+  };
+
   // analyze API는 POST 방식이며 groupId와 date를 쿼리 파라미터로 받음
-  let res = http.post(`${BASE_URL}/analyze?groupId=${groupId}&date=${today}`);
+  let res = http.post(
+    `${BASE_URL}/analyze?groupId=${groupId}&date=${today}`,
+    null,
+    params,
+  );
 
   check(res, {
     "analysis status is 200": (r) => r.status === 200,

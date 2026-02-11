@@ -14,7 +14,7 @@ export let options = {
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || "https://i14a105.p.ssafy.io/api/health";
+const BASE_URL = __ENV.BASE_URL || "https://i14a105.p.ssafy.io/api";
 
 export default function () {
   const groupId = Math.floor(Math.random() * 100) + 1; // 1~100 사이의 groupId 시뮬레이션
@@ -40,7 +40,11 @@ export default function () {
     },
   };
 
-  let res = http.post(`${BASE_URL}/data?groupId=${groupId}`, payload, params);
+  let res = http.post(
+    `${BASE_URL}/health/data?groupId=${groupId}`,
+    payload,
+    params,
+  );
 
   check(res, {
     "upload status is 200": (r) => r.status === 200,

@@ -8,7 +8,7 @@ export let options = {
   duration: "1m",
 };
 
-const BASE_URL = __ENV.BASE_URL || "https://i14a105.p.ssafy.io/api/health";
+const BASE_URL = __ENV.BASE_URL || "https://i14a105.p.ssafy.io/api";
 
 export default function () {
   const groupId = 1;

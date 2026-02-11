@@ -4,8 +4,8 @@ import { check, sleep } from "k6";
 // 메시지 전송 부하 테스트 (Voice Styling 프로세스 트리거 전단계)
 export let options = {
   stages: [
-    { duration: "30s", target: 30 },
-    { duration: "1m", target: 30 },
+    { duration: "30s", target: 100 },
+    { duration: "1m", target: 100 },
     { duration: "30s", target: 0 },
   ],
 };
@@ -31,7 +31,15 @@ export default function () {
 
   check(res, {
     "send message status is 200": (r) => r.status === 200,
-    "has message id": (r) => r.json().data.id !== undefined,
+    "has message id": (r) => {
+      try {
+        return (
+          r.status === 200 && r.json().data && r.json().data.id !== undefined
+        );
+      } catch (e) {
+        return false;
+      }
+    },
   });
 
   sleep(2);

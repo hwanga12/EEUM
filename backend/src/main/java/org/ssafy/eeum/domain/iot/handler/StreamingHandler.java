@@ -59,7 +59,7 @@ public class StreamingHandler extends BinaryWebSocketHandler {
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        log.info("WebSocket connected: {} | Client IP: {}", session.getId(), session.getRemoteAddress());
+        log.info("[웹소켓] 연결됨: {} | 클라이언트 IP: {}", session.getId(), session.getRemoteAddress());
 
         try {
             URI uri = session.getUri();
@@ -78,11 +78,11 @@ public class StreamingHandler extends BinaryWebSocketHandler {
 
             if (!session.getAttributes().containsKey("deviceId")) {
                 log.info(
-                        "ℹ️ No identity found in QueryParams. Connection maintained without subscribing to any device.");
+                        "ℹ️ 쿼리 파라미터에서 식별 정보를 찾을 수 없습니다. 연결은 유지되나 특정 기기에 대한 구독은 수행되지 않았습니다.");
             }
 
         } catch (Exception e) {
-            log.warn("Failed to parse WebSocket query params: {}", e.getMessage());
+            log.warn("[웹소켓] 쿼리 파라미터 파싱 실패: {}", e.getMessage());
         }
     }
 
@@ -122,18 +122,18 @@ public class StreamingHandler extends BinaryWebSocketHandler {
             for (IotDevice device : devices) {
                 if ("JETSON".equalsIgnoreCase(device.getDeviceType()) && device.getSerialNumber() != null) {
                     targetDeviceId = device.getSerialNumber();
-                    log.info("Found Jetson device for Family {} via QueryParam: {}", familyId, targetDeviceId);
+                    log.info("[웹소켓] 가족({})의 제슨 기기 발견 (쿼리 파라미터): {}", familyId, targetDeviceId);
                     break;
                 }
             }
         } catch (Exception e) {
-            log.error("Error looking up device by familyId: {}", familyId, e);
+            log.error("[오류] 가족 ID({})로 기기 조회 중 에러 발생", familyId, e);
         }
 
         if (targetDeviceId != null) {
             registerViewerByDeviceId(session, targetDeviceId);
         } else {
-            log.warn("No Jetson device found for Family {} (QueryParam)", familyId);
+            log.warn("[웹소켓] 가족({})에 해당하는 제슨 기기를 찾을 수 없습니다 (쿼리 파라미터)", familyId);
         }
     }
 
@@ -150,7 +150,7 @@ public class StreamingHandler extends BinaryWebSocketHandler {
 
         session.getAttributes().put("deviceId", deviceId);
         session.getAttributes().put("role", "VIEWER");
-        log.info("Viewer registered for device: {} (Session: {})", deviceId, session.getId());
+        log.info("[웹소켓] 뷰어 등록됨 - 기기: {}, 세션: {}", deviceId, session.getId());
     }
 
     /**
@@ -164,7 +164,7 @@ public class StreamingHandler extends BinaryWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
-        log.info("Received Text Message from {}: {}", session.getId(), payload);
+        log.info("[웹소켓] 텍스트 메시지 수신 - 세션: {}, 내용: {}", session.getId(), payload);
 
         try {
             JsonNode json = objectMapper.readTree(payload);
@@ -183,12 +183,12 @@ public class StreamingHandler extends BinaryWebSocketHandler {
                 deviceSessions.put(deviceId, session);
                 session.getAttributes().put("deviceId", deviceId);
                 session.getAttributes().put("role", "DEVICE");
-                log.info("Device registered: {} (Session: {})", deviceId, session.getId());
+                log.info("[웹소켓] 기기 등록됨 - 기기: {}, 세션: {}", deviceId, session.getId());
 
             } else if ("REGISTER_VIEWER".equals(type)) {
                 if (session.getAttributes().containsKey("deviceId")) {
                     String currentDevice = (String) session.getAttributes().get("deviceId");
-                    log.warn("Ignored redundant REGISTER_VIEWER request. Already watching: {}", currentDevice);
+                    log.warn("[웹소켓] 중복된 뷰어 등록 요청 무시. 이미 시청 중: {}", currentDevice);
                     return;
                 }
 
@@ -201,7 +201,7 @@ public class StreamingHandler extends BinaryWebSocketHandler {
                 }
             }
         } catch (Exception e) {
-            log.error("Error handling text message: {}", payload, e);
+            log.error("[오류] 텍스트 메시지 처리 중 에러 발생: {}", payload, e);
         }
     }
 
@@ -216,7 +216,7 @@ public class StreamingHandler extends BinaryWebSocketHandler {
     @Override
     protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message) {
         if (logCounter.get() % 30 == 0) {
-            log.info("Received binary frame from: {} (Size: {} bytes)", session.getId(), message.getPayloadLength());
+            log.debug("[웹소켓] 이진 프레임 수신 - 세션: {}, 크기: {} 바이트", session.getId(), message.getPayloadLength());
         }
 
         String role = (String) session.getAttributes().get("role");
@@ -240,13 +240,13 @@ public class StreamingHandler extends BinaryWebSocketHandler {
                             viewer.getAttributes().put("lastSentTime", currentTime);
 
                             if (logCounter.incrementAndGet() % 30 == 0) {
-                                log.info("Sending binary frame to viewer: {} (Size: {} bytes)", viewer.getId(),
+                                log.debug("[웹소켓] 뷰어에게 이진 프레임 전송 - 세션: {}, 크기: {} 바이트", viewer.getId(),
                                         payload.remaining());
                             }
 
                             viewer.sendMessage(new BinaryMessage(payload.duplicate()));
                         } catch (IOException e) {
-                            log.debug("Failed to send frame to viewer: {}", viewer.getId());
+                            log.debug("[웹소켓] 뷰어에게 프레임 전송 실패 - 세션: {}", viewer.getId());
                         }
                     }
                 }
@@ -261,7 +261,7 @@ public class StreamingHandler extends BinaryWebSocketHandler {
      */
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
-        log.error("WebSocket Transport Error: Session={}, Error={}", session.getId(), exception.getMessage(),
+        log.error("[웹소켓] 전송 오류 발생 - 세션: {}, 오류: {}", session.getId(), exception.getMessage(),
                 exception);
         super.handleTransportError(session, exception);
     }
@@ -279,7 +279,7 @@ public class StreamingHandler extends BinaryWebSocketHandler {
 
         if ("DEVICE".equals(role) && deviceId != null) {
             deviceSessions.remove(deviceId);
-            log.info("Device disconnected: {} (Code: {}, Reason: {})", deviceId, status.getCode(), status.getReason());
+            log.info("[웹소켓] 기기 연결 종료 - 기기: {}, 코드: {}, 사유: {}", deviceId, status.getCode(), status.getReason());
         } else if ("VIEWER".equals(role) && deviceId != null) {
             Set<WebSocketSession> viewers = viewerSessions.get(deviceId);
             if (viewers != null) {
@@ -288,9 +288,9 @@ public class StreamingHandler extends BinaryWebSocketHandler {
                     viewerSessions.remove(deviceId);
                 }
             }
-            log.info("Viewer disconnected: {} (Code: {}, Reason: {})", deviceId, status.getCode(), status.getReason());
+            log.info("[웹소켓] 뷰어 연결 종료 - 기기: {}, 코드: {}, 사유: {}", deviceId, status.getCode(), status.getReason());
         } else {
-            log.info("Unknown connection closed: {} (Code: {}, Reason: {})", session.getId(), status.getCode(),
+            log.info("[웹소켓] 알 수 없는 연결 종료 - 세션: {}, 코드: {}, 사유: {}", session.getId(), status.getCode(),
                     status.getReason());
         }
     }

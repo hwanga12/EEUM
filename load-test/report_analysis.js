@@ -8,7 +8,7 @@ export let options = {
   duration: "1m",
 };
 
-const BASE_URL = "http://host.docker.internal:8080/api/health";
+const BASE_URL = __ENV.BASE_URL || "https://i14a105.p.ssafy.io/api/health";
 
 export default function () {
   const groupId = 1;

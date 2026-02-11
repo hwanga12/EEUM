@@ -30,3 +30,4 @@ services:
     tty: true
     environment:
       - K6_OUT=influxdb=http://influxdb:8086/k6
+      - BASE_URL=${BASE_URL:-https://i14a105.p.ssafy.io/api/health}

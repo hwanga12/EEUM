@@ -14,7 +14,7 @@ export let options = {
   },
 };
 
-const BASE_URL = "http://host.docker.internal:8080/api/health";
+const BASE_URL = __ENV.BASE_URL || "https://i14a105.p.ssafy.io/api/health";
 
 export default function () {
   const groupId = Math.floor(Math.random() * 100) + 1; // 1~100 사이의 groupId 시뮬레이션

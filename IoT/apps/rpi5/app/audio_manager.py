@@ -3,8 +3,8 @@ import logging
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Callable, Iterable, Optional
-from app.config import get_env_bool
 from app.audio_play import AudioPlayback, start_mp3_playback
+from app.config import AUDIO_PREEMPT_ONLY_FALL
 from app.sync_utils import now_ts
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class AudioManager:
         self.is_playing: bool = False
         self.current_prio: int = 0
 
-        self._preempt_only_fall = get_env_bool("AUDIO_PREEMPT_ONLY_FALL", True)
+        self._preempt_only_fall = AUDIO_PREEMPT_ONLY_FALL
 
     def _dump(self, reason: str) -> None:
         if not logger.isEnabledFor(logging.DEBUG):

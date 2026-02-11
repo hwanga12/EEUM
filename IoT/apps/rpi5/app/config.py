@@ -209,6 +209,8 @@ AUDIO_SOFT_STOP = _get_env_bool("AUDIO_SOFT_STOP", True)
 AUDIO_FFPROBE_PROBESIZE = _get_env_str("AUDIO_FFPROBE_PROBESIZE", "256k")
 AUDIO_FFMPEG_ANALYZE_DURATION = _get_env_str("AUDIO_FFMPEG_ANALYZE_DURATION", "200k")
 
+AUDIO_PREEMPT_ONLY_FALL = _get_env_bool("AUDIO_PREEMPT_ONLY_FALL", True)
+
 # ---------------------------------------------------------------------
 # STT tuning
 # ---------------------------------------------------------------------

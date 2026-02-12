@@ -744,7 +744,10 @@ const fetchMessages = async () => {
   loading.value = true;
 
   try {
-    const response = await messageService.getGroupMessages(familyId.value);
+    const response = await messageService.getGroupMessages(familyId.value, {
+      page: currentPage.value,
+      size: 20,
+    });
     const list = response?.data ?? [];
 
     messages.value = Array.isArray(list)
@@ -755,7 +758,13 @@ const fetchMessages = async () => {
             expanded: false,
           }))
       : [];
-    totalPages.value = 1; // 현재 페이지네이션이 단일 페이지로 응답됨
+
+    // 단순화된 페이지네이트: 데이터가 20개 미만이면 마지막 페이지로 간주
+    if (list.length < 20) {
+      totalPages.value = currentPage.value + 1;
+    } else {
+      totalPages.value = currentPage.value + 2; // 다음 페이지가 있다는 가정
+    }
   } catch (error) {
     Logger.error('메시지 조회 실패:', error);
   } finally {

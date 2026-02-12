@@ -50,10 +50,11 @@ export const messageService = {
   /**
    * 그룹 메시지 목록을 조회합니다. (v2/messages 테이블 기반)
    * @param {string|number} groupId - 그룹(가족) ID
+   * @param {Object} [params={}] - 페이지네이션 정보 (page, size)
    * @returns {Promise<Object>} API 응답 데이터 (data: Array)
    */
-  async getGroupMessages(groupId) {
-    const response = await api.get(`/groups/${groupId}/messages`);
+  async getGroupMessages(groupId, params = {}) {
+    const response = await api.get(`/groups/${groupId}/messages`, { params });
     return response.data;
   },
 

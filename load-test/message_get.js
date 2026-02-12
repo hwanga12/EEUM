@@ -1,10 +1,13 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
 
-// 앨범 조회 및 업로드 준비 부하 테스트
+// 메시지 목록 조회 부하 테스트
 export let options = {
-  vus: 1000,
-  duration: "1m",
+  stages: [
+    { duration: "30s", target: 100 }, // 100명까지 램프업
+    { duration: "1m", target: 100 }, // 100명 유지
+    { duration: "30s", target: 0 }, // 램프다운
+  ],
 };
 
 const BASE_URL = __ENV.BASE_URL || "https://i14a105.p.ssafy.io/api";
@@ -13,19 +16,18 @@ const TOKEN =
 
 export default function () {
   const params = {
-    headers: { Authorization: TOKEN },
+    headers: {
+      Authorization: TOKEN,
+    },
   };
 
-  // 1. 앨범 목록 조회
-  let listRes = http.get(`${BASE_URL}/families/1/album`, params);
-  check(listRes, { "get album success": (r) => r.status === 200 });
+  // 1번 그룹의 메시지 목록을 가져옴 (페이지네이션 적용: 0페이지, 20개)
+  let res = http.get(`${BASE_URL}/groups/1/messages?page=0&size=20`, params);
 
-  // 2. Presigned URL 요청 (업로드 시뮬레이션 전단계)
-  let urlRes = http.get(
-    `${BASE_URL}/album/presigned-url?fileName=test.jpg&contentType=image/jpeg`,
-    params,
-  );
-  check(urlRes, { "get presigned success": (r) => r.status === 200 });
+  check(res, {
+    "get messages status is 200": (r) => r.status === 200,
+    "has message list": (r) => Array.isArray(r.json().data),
+  });
 
-  sleep(3);
+  sleep(1); // 1초 간격으로 리프레시한다고 가정
 }

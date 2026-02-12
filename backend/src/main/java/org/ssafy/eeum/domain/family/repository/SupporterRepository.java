@@ -6,12 +6,18 @@ import org.ssafy.eeum.domain.family.entity.Supporter;
 import org.ssafy.eeum.domain.family.entity.SupporterId;
 import org.ssafy.eeum.domain.auth.entity.User;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
 public interface SupporterRepository extends JpaRepository<Supporter, SupporterId> {
     List<Supporter> findAllByUser(User user);
-    List<Supporter> findAllByFamily(Family family);
+
+    @Query("SELECT s FROM Supporter s JOIN FETCH s.user WHERE s.family = :family")
+    List<Supporter> findAllByFamily(@Param("family") Family family);
+
     Optional<Supporter> findByUserAndFamily(User user, Family family);
+
     Optional<Supporter> findByFamilyAndRole(Family family, Supporter.Role role);
 }

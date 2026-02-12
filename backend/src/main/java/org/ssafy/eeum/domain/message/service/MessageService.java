@@ -13,6 +13,8 @@ import org.ssafy.eeum.domain.family.repository.FamilyRepository;
 import org.ssafy.eeum.domain.family.repository.SupporterRepository;
 import org.ssafy.eeum.domain.iot.entity.ActionType;
 import org.ssafy.eeum.domain.iot.service.IotSyncService;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.ssafy.eeum.domain.message.dto.MessageRequestDto;
 import org.ssafy.eeum.domain.message.dto.MessageResponseDto;
 import org.ssafy.eeum.domain.message.entity.Message;
@@ -93,7 +95,7 @@ public class MessageService {
                 messageTtsAsyncService.processTtsAsync(saved.getId(), userId, text, groupId);
         }
 
-        public List<MessageResponseDto> getMessages(Integer groupId, Integer requesterUserId) {
+        public List<MessageResponseDto> getMessages(Integer groupId, Integer requesterUserId, int page, int size) {
                 Family group = familyRepository.findById(groupId)
                                 .orElseThrow(() -> new CustomException(ErrorCode.ENTITY_NOT_FOUND));
 
@@ -103,7 +105,8 @@ public class MessageService {
                 supporterRepository.findByUserAndFamily(requester, group)
                                 .orElseThrow(() -> new CustomException(ErrorCode.FORBIDDEN_FAMILY_ACCESS));
 
-                List<Message> messages = messageRepository.findAllByGroupAndDeletedAtIsNullOrderByCreatedAtAsc(group);
+                Pageable pageable = PageRequest.of(page, size);
+                List<Message> messages = messageRepository.findAllByGroupWithSender(group, pageable);
                 List<Supporter> supporters = supporterRepository.findAllByFamily(group);
 
                 Map<Integer, Supporter> supporterMap = supporters.stream()

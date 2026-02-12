@@ -32,9 +32,11 @@ public class MessageController {
     @GetMapping("/{groupId}/messages")
     public RestApiResponse<List<MessageResponseDto>> getMessages(
             @PathVariable Integer groupId,
-            @org.springframework.security.core.annotation.AuthenticationPrincipal CustomUserDetails userDetails) {
+            @org.springframework.security.core.annotation.AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
 
-        List<MessageResponseDto> responses = messageService.getMessages(groupId, userDetails.getId());
+        List<MessageResponseDto> responses = messageService.getMessages(groupId, userDetails.getId(), page, size);
         return RestApiResponse.success(responses);
     }
 

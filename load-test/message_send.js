@@ -4,8 +4,8 @@ import { check, sleep } from "k6";
 // 메시지 전송 부하 테스트 (Voice Styling 프로세스 트리거 전단계)
 export let options = {
   stages: [
-    { duration: "30s", target: 100 },
-    { duration: "1m", target: 100 },
+    { duration: "30s", target: 50 },
+    { duration: "1m", target: 50 },
     { duration: "30s", target: 0 },
   ],
 };

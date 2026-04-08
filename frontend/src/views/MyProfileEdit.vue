@@ -19,17 +19,9 @@
 
         <!-- 상단 네비게이션 바 -->
         <div class="relative z-10 flex justify-between items-center p-5 pt-6">
-          <button
-            @click="router.back()"
-            class="p-2 -ml-2 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md transition text-white border border-white/20 shadow-sm"
-          >
+          <button @click="router.back()" class="p-2 -ml-2 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md transition text-white border border-white/20 shadow-sm">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M15 19l-7-7 7-7"
-              />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <h1 class="text-white text-lg font-bold tracking-tight opacity-90">프로필 수정</h1>
@@ -348,7 +340,7 @@ import { Logger } from '@/services/logger';
 const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
-const familyStore = useFamilyStore();
+const familyStore = useFamilyStore(); 
 const modalStore = useModalStore();
 const { profile: userProfile } = storeToRefs(userStore);
 
@@ -436,24 +428,26 @@ const genderRadioGroupFocus = () => {
   genderRadioGroup.value?.querySelector('input[type="radio"]')?.focus();
 };
 
-/**
- * 프로필 이미지 파일 선택 변경 시 이미지를 압축하고 미리보기를 생성합니다.
- * @param {Event} event
- */
 const handleFileChange = async (event) => {
   const file = event.target.files[0];
-  if (!file) return;
+  if (file) {
+    try {
+      
+      const compressedFile = await compressImage(file, 1600, 0.7);
+      
+      
+      if (compressedFile.size > 3 * 1024 * 1024) {
+        await modalStore.openAlert("이미지 용량이 너무 큽니다. (최대 3MB)", "업로드 실패");
+        event.target.value = ''; 
+        return;
+      }
 
-  try {
-    const compressedFile = await compressImage(file, 1600, 0.7);
-    if (validateFileSize(compressedFile)) {
-      updateProfileImagePreview(compressedFile);
-    } else {
-      event.target.value = '';
+      profileFile.value = compressedFile;
+      imageUrl.value = URL.createObjectURL(compressedFile);
+    } catch (e) {
+      Logger.error("이미지 압축 실패:", e);
+      await modalStore.openAlert("이미지 처리 중 오류가 발생했습니다.", "오류");
     }
-  } catch (e) {
-    Logger.error('이미지 압축 실패:', e);
-    await modalStore.openAlert('이미지 처리 중 오류가 발생했습니다.', '오류');
   }
 };
 
@@ -489,6 +483,7 @@ const openAddressSearch = () => {
 watch(showAddressModal, (isShown) => {
   if (isShown) {
     document.body.style.overflow = 'hidden';
+    
     setTimeout(() => {
       const container = document.getElementById('postcode-layer');
 
@@ -499,7 +494,7 @@ watch(showAddressModal, (isShown) => {
       }
 
       if (container) {
-        container.innerHTML = '';
+        container.innerHTML = ''; 
         container.style.display = 'block';
 
         new window.daum.Postcode({
@@ -512,7 +507,7 @@ watch(showAddressModal, (isShown) => {
           height: '100%',
         }).embed(container);
       } else {
-        Logger.error('주소 검색 컨테이너를 찾을 수 없음');
+         Logger.error('주소 검색 컨테이너를 찾을 수 없음');
       }
     }, 100);
   } else {
@@ -524,31 +519,24 @@ watch(showAddressModal, (isShown) => {
  * 프로필 수정 양식을 서버에 제출합니다.
  */
 const submitProfile = async () => {
+  
   if (isLoading.value) return;
   isLoading.value = true;
   errorMessage.value = '';
 
-  try {
-    const formData = prepareProfilePayload();
-    await updateUserProfile(formData);
-    await syncProfileData();
-    handleNavigationAfterSubmit();
-  } catch (error) {
-    handleProfileSubmitError(error);
-  } finally {
-    isLoading.value = false;
+  
+  let birthDate = null;
+  if (birthYear.value && birthMonth.value && birthDay.value) {
+    const month = String(birthMonth.value).padStart(2, '0');
+    const day = String(birthDay.value).padStart(2, '0');
+    birthDate = `${birthYear.value}-${month}-${day}`;
   }
 };
 
-/**
- * 제출을 위해 생년월일과 주소를 포함한 FormData를 생성합니다.
- * @returns {FormData}
- */
-const prepareProfilePayload = () => {
-  const birthDate = formatBirthDate();
-  const fullAddress =
-    profile.value.address + (detailAddress.value ? ` ${detailAddress.value}` : '');
+  
+  const fullAddress = profile.value.address + (detailAddress.value ? ` ${detailAddress.value}` : '');
 
+  
   const requestDto = {
     name: profile.value.name,
     phone: profile.value.phone,
@@ -557,10 +545,39 @@ const prepareProfilePayload = () => {
     address: fullAddress,
   };
 
+  
   const formData = new FormData();
   formData.append('request', new Blob([JSON.stringify(requestDto)], { type: 'application/json' }));
-  if (profileFile.value) {
-    formData.append('file', profileFile.value);
+  if (profileFile.value) formData.append('file', profileFile.value);
+
+  try {
+    
+    await updateUserProfile(formData);
+    
+    
+    await userStore.fetchUser(true);
+    
+    
+    if (familyStore.selectedFamily && familyStore.selectedFamily.id) {
+        await familyStore.fetchMembers(familyStore.selectedFamily.id, true);
+    }
+    
+    if (isInitialSetup.value) {
+      router.push({ name: 'VoiceRegistration', query: { flow: 'initial' } });
+    } else {
+      
+      const familyId = familyStore.selectedFamily?.id;
+      const userId = userStore.profile?.id;
+      
+      router.back();
+    }
+
+  } catch (error) {
+    
+    Logger.error("프로필 수정 실패:", error);
+    errorMessage.value = error.response?.data?.message || '프로필 업데이트에 실패했습니다.';
+  } finally {
+    isLoading.value = false;
   }
   return formData;
 };

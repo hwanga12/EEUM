@@ -13,28 +13,58 @@ export const useFamilyStore = defineStore('family', () => {
 
   /** @type {import('vue').Ref<Object|null>} 현재 선택된 가족 */
   const selectedFamily = ref(null);
-
-  /** @type {import('vue').Ref<boolean>} 로딩 상태 */
   const isLoading = ref(false);
 
-  /** @type {import('vue').Ref<Object>} 멤버 정보 캐시 (key: familyId) */
-  const membersCache = ref({});
-
-  /**
-   * 서버로부터 가족 목록을 가져오고 선택 상태를 동기화합니다.
-   * @param {boolean} [force=false] 캐시 무시 여부
-   */
   async function fetchFamilies(force = false) {
+    
     if (!force && families.value.length > 0) {
-      ensureSelectionExists();
+      
+      if (!selectedFamily.value && families.value.length > 0) {
+        const savedId = localStorage.getItem('selectedFamilyId');
+        if (savedId) {
+          const savedFamily = families.value.find(f => String(f.id) === String(savedId));
+          if (savedFamily) selectedFamily.value = savedFamily;
+        }
+        if (!selectedFamily.value) selectedFamily.value = families.value[0];
+      }
       return;
     }
 
     isLoading.value = true;
     try {
+      
       const response = await api.get('/families', { headers: { silent: true } });
       families.value = response.data;
-      updateSelectedFamily();
+
+      
+      if (families.value.length > 0) {
+        
+        if (!selectedFamily.value) {
+          const savedId = localStorage.getItem('selectedFamilyId');
+          if (savedId) {
+            const savedFamily = families.value.find(f => String(f.id) === String(savedId));
+            if (savedFamily) {
+              selectedFamily.value = savedFamily;
+            }
+          }
+        }
+
+        const exists = selectedFamily.value && families.value.find(f => f.id === selectedFamily.value.id);
+        if (!selectedFamily.value || !exists) {
+          selectedFamily.value = families.value[0];
+        } else {
+          
+          selectedFamily.value = exists;
+        }
+
+        
+        if (selectedFamily.value) {
+          localStorage.setItem('selectedFamilyId', selectedFamily.value.id);
+        }
+      } else {
+        selectedFamily.value = null;
+        localStorage.removeItem('selectedFamilyId');
+      }
     } catch (error) {
       Logger.error('가족 목록 조회 실패:', error);
       families.value = [];
@@ -132,18 +162,26 @@ export const useFamilyStore = defineStore('family', () => {
    */
   function selectFamily(family) {
     selectedFamily.value = family;
-    persistSelection(family);
+    if (family && family.id) {
+      localStorage.setItem('selectedFamilyId', family.id);
+      
+      if (window.AndroidBridge && window.AndroidBridge.saveSelectedFamilyId) {
+        window.AndroidBridge.saveSelectedFamilyId(String(family.id));
+      }
+    } else {
+      localStorage.removeItem('selectedFamilyId');
+      if (window.AndroidBridge && window.AndroidBridge.saveSelectedFamilyId) {
+        window.AndroidBridge.saveSelectedFamilyId("");
+      }
+    }
   }
 
-  /**
-   * 가족 ID로 가족을 선택합니다.
-   * @param {number|string} familyId
-   */
   function selectFamilyById(familyId) {
     if (!familyId) return;
-    const family = families.value.find((f) => String(f.id) === String(familyId));
+    const family = families.value.find(f => String(f.id) === String(familyId));
     if (family) {
       selectFamily(family);
+
     }
   }
 
@@ -153,24 +191,23 @@ export const useFamilyStore = defineStore('family', () => {
   function clearFamily() {
     selectedFamily.value = null;
     families.value = [];
-    membersCache.value = {};
+    membersCache.value = {}; 
     localStorage.removeItem('selectedFamilyId');
   }
 
-  /**
-   * 새로운 가족을 생성합니다.
-   * @param {Object} data 가족 생성 데이터
-   * @returns {Promise<Object>} 생성 정보
-   */
   async function createFamily(data) {
     isLoading.value = true;
     try {
       const response = await api.post('/families', data);
-      await fetchFamilies(true);
+      await fetchFamilies(true); 
 
-      if (response.data?.id) {
+      
+      if (response.data && response.data.id) {
         selectFamilyById(response.data.id);
+      } else if (families.value.length > 0) {
+        selectFamily(families.value[families.value.length - 1]);
       }
+
       return response.data;
     } catch (error) {
       Logger.error('가족 생성 실패:', error);
@@ -180,23 +217,20 @@ export const useFamilyStore = defineStore('family', () => {
     }
   }
 
-  /**
-   * 초대 코드를 사용하여 가족에 참여합니다.
-   * @param {string} inviteCode 초대 코드
-   * @returns {Promise<Object>} 참여 결과
-   */
   async function joinFamily(inviteCode) {
     isLoading.value = true;
     try {
       const response = await api.post('/families/join', inviteCode, {
         headers: { 'Content-Type': 'text/plain' },
-        transformRequest: [(data) => data],
+        transformRequest: [(data) => data]
       });
-      await fetchFamilies(true);
+      await fetchFamilies(true); 
 
-      if (response.data?.id) {
+      
+      if (response.data && response.data.id) {
         selectFamilyById(response.data.id);
       }
+
       return response.data;
     } catch (error) {
       Logger.error('가족 참여 실패:', error);
@@ -206,39 +240,24 @@ export const useFamilyStore = defineStore('family', () => {
     }
   }
 
-  /**
-   * 특정 가족의 구성원 목록을 가져옵니다. (캐싱 지원)
-   * @param {number|string} familyId 가족 ID
-   * @param {boolean} [force=false] 캐시 무시 여부
-   * @returns {Promise<Array>} 구성원 목록
-   */
+  const membersCache = ref({});
+
   async function fetchMembers(familyId, force = false) {
     if (!familyId) return [];
+    
     if (!force && membersCache.value[familyId]) {
       return membersCache.value[familyId];
     }
 
     try {
-      const response = await api.get(`/families/${familyId}/members`, {
-        headers: { silent: true },
-      });
+      const response = await api.get(`/families/${familyId}/members`, { headers: { silent: true } });
       membersCache.value[familyId] = response.data;
       return response.data;
     } catch (error) {
       Logger.error(`가족 구성원 조회 실패 (ID: ${familyId}):`, error);
-      return membersCache.value[familyId] || [];
+      return membersCache.value[familyId] || []; 
     }
   }
-
-  /**
-   * 보양이(피보호자) 정보 Getter
-   * 현재 선택된 가족의 멤버 중 dependent가 true인 멤버 반환
-   */
-  const dependent = computed(() => {
-    if (!selectedFamily.value) return null;
-    const members = membersCache.value[selectedFamily.value.id] || [];
-    return members.find((m) => m.dependent || m.isDependent);
-  });
 
   return {
     families,
@@ -251,6 +270,6 @@ export const useFamilyStore = defineStore('family', () => {
     selectFamilyById,
     clearFamily,
     createFamily,
-    joinFamily,
+    joinFamily
   };
 });

@@ -82,11 +82,11 @@ def build_observation(
             "has_person": bool(has_person),
             "bbox": bbox_norm,
             "conf": float(box_conf),
-            "keypoints_raw": kps,        # 원본 키포인트
-            "keypoints_smooth": None,    # 스무딩 처리 후 채워질 필드
-            "keypoints": kps,            # 기존 코드와의 호환성을 위한 기본 필드
+            "keypoints_raw": kps,     
+            "keypoints_smooth": None, 
+            "keypoints": kps,         
             "quality_score": float(quality),
-            "frame_shape": (frame_h, frame_w),  # 분석에 사용된 해상도 정보
+            "frame_shape": (frame_h, frame_w),  
         }
     )
     return obs

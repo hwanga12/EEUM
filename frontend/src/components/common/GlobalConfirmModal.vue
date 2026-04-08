@@ -92,6 +92,7 @@ const handleCancel = () => {
  * 배경 클릭 시 알림은 확인, 확인창은 취소로 간주하여 처리합니다. (내부 사용)
  */
 const handleBackdropClick = () => {
+  
   if (store.type === 'alert') {
     store.close(true);
   } else {

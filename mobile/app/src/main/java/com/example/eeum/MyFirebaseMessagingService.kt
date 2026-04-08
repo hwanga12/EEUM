@@ -69,15 +69,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val type = data["type"] ?: "NORMAL"
         val route = data["route"]
 
-        Log.d(TAG, "데이터 메시지 처리 - 제목: $title, 내용: $body, 타입: $type, 경로: $route")
+        Log.d(TAG, "Handling data message - Title: $title, Body: $body, Type: $type, Route: $route")
         
-        // 1. 심박수 측정 명령 수신 시
+        // 1. 측정 명령 수신 시 처리
         if (type == "CMD_MEASURE_HR") {
             Log.d(TAG, "⚡ 심박수 측정 명령 수신: 워치로 신호 전송")
             
-            // ListenerService를 위한 상태 저장
+            // Save state for ListenerService
             val familyId = data["familyId"]
-            val eventId = data["eventId"] // 낙상 이벤트 ID (relatedId)
+            val eventId = data["eventId"] // Fall Event ID (relatedId)
             
             if (familyId != null) {
                 val prefs = getSharedPreferences("health_prefs", Context.MODE_PRIVATE)
@@ -87,16 +87,16 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                     editor.putString("pending_measurement_related_id", eventId)
                 }
                 editor.apply()
-                Log.d(TAG, "대기 중인 측정 정보 저장 - FamilyId: $familyId, RelatedId: $eventId")
+                Log.d(TAG, "Saved pending familyId: $familyId, relatedId: $eventId")
             }
             
             triggerMeasurement(data)
             return
         }
 
-        // 2. 건강 데이터 동기화 명령 수신 시
+        // 2. 건강 데이터 동기화 명령 수신 시 처리
         if (type == "CMD_SYNC_HEALTH") {
-            Log.d(TAG, "⚡ 건강 데이터 동기화 명령 수신: 즉시 워커 실행")
+            Log.d(TAG, "⚡ 건강 데이터 동기화 명령 수수: 즉시 워커 실행")
             val familyId = data["familyId"]
             MainActivity.triggerImmediateHealthSync(applicationContext, familyId)
             return
@@ -106,16 +106,45 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val familyId = data["familyId"]
         val groupName = data["groupName"] ?: ""
         
-        // 앱이 포그라운드 상태라면 즉시 WebView로 이벤트 전달
+        // 포그라운드 상태에서 수신 시 즉시 WebView에 전달
         if (notificationId != null) {
             MainActivity.emitNotification(notificationId, type, familyId, title, body, groupName)
         }
         
-        // 앱이 포그라운드가 아닐 때만 시스템 상단바 알림 표시
+        // 앱이 포그라운드 상태가 아닐 때만 시스템 알림 표시
         if (!MainActivity.isAppInForeground && !type.startsWith("CMD_")) {
             sendNotification(title, body, type, notificationId, route, familyId, groupName)
         } else {
-            Log.d(TAG, "알림 표시 생략 - Foreground: ${MainActivity.isAppInForeground}, Type: $type")
+            Log.d(TAG, "Notification skipped - Foreground: ${MainActivity.isAppInForeground}, Type: $type")
+        }
+    }
+
+    // 워치로 측정 시작 신호 전송
+    private fun triggerMeasurement(data: Map<String, String>) {
+        Log.d(TAG, "Attempting to trigger Watch Measurement via Wearable API...")
+        
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val context = applicationContext
+                val nodeClient = com.google.android.gms.wearable.Wearable.getNodeClient(context)
+                val messageClient = com.google.android.gms.wearable.Wearable.getMessageClient(context)
+                
+                val nodes = nodeClient.connectedNodes.await()
+                if (nodes.isNotEmpty()) {
+                    nodes.forEach { node ->
+                        // 워치 앱이 듣고 있는 정확한 Path
+                        val path = "/emergency/start"
+                        Log.d(TAG, "Sending trigger to $path on node: ${node.displayName}")
+                        messageClient.sendMessage(node.id, path, "START".toByteArray()).await()
+                        
+                        Log.d(TAG, "Trigger message sent to ${node.displayName}")
+                    }
+                } else {
+                    Log.e(TAG, "No connected watch found via Wearable API")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error triggering measurement on Watch", e)
+            }
         }
     }
 
@@ -158,9 +187,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "서버로 토큰 전송: $token")
     }
 
-    /**
-     * 시스템 알림(Notification) 표시
-     */
     private fun sendNotification(title: String, body: String, type: String, notificationId: String? = null, route: String? = null, familyId: String? = null, groupName: String? = null) {
         val intent = Intent(this, MainActivity::class.java)
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)

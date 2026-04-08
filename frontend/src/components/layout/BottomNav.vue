@@ -1,45 +1,28 @@
 <template>
-  <div
-    class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-end z-50 transition-all duration-300"
-    style="height: calc(5rem + var(--sab)); padding-bottom: calc(0.75rem + var(--sab))"
-  >
-    <!-- 메시지 탭 버튼 -->
-    <button
-      @click="setActive('message')"
-      class="flex flex-col items-center justify-end w-1/5 transition-colors"
-      :class="activeTab === 'message' ? 'text-[#e76f51]' : 'text-[#8d6e63]'"
-      title="메시지 함 이동"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="h-8 w-8 mb-1.5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-        />
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-end z-50 transition-all duration-300"
+       style="height: calc(5rem + var(--sab)); padding-bottom: calc(0.75rem + var(--sab));">
+    <!-- Message -->
+    <button @click="setActive('message')" class="flex flex-col items-center justify-end w-1/5 transition-colors" :class="activeTab === 'message' ? 'text-[#e76f51]' : 'text-[#8d6e63]'">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
       </svg>
       <span class="text-xs font-semibold">메시지</span>
     </button>
-
-    <!-- 갤러리 탭 버튼 -->
-    <button
-      @click="setActive('gallery')"
-      class="flex flex-col items-center justify-end w-1/5 transition-colors"
-      :class="activeTab === 'gallery' ? 'text-[#e76f51]' : 'text-[#8d6e63]'"
-      title="가족 갤러리 이동"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="h-8 w-8 mb-1.5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
+    
+    <!-- Gallery -->
+    <button @click="setActive('gallery')" class="flex flex-col items-center justify-end w-1/5 transition-colors" :class="activeTab === 'gallery' ? 'text-[#e76f51]' : 'text-[#8d6e63]'">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+      <span class="text-xs font-semibold">갤러리</span>
+    </button>
+  
+    <!-- Center Home Button (Floating Effect) -->
+    <div class="relative w-1/5 flex justify-center">
+      <button 
+        @click="setActive('home')" 
+        class="absolute -top-12 rounded-full p-5 shadow-xl flex items-center justify-center border-[5px] border-white active:scale-95 transition-transform duration-200"
+        :class="activeTab === 'home' ? 'bg-[#e76f51] text-white' : 'bg-white text-[#8d6e63]'"
       >
         <path
           stroke-linecap="round"
@@ -74,7 +57,6 @@
           />
         </svg>
       </button>
-      <!-- 레이아웃 유지를 위한 더미 스팬 -->
       <span class="text-xs font-bold mt-9 invisible select-none" aria-hidden="true">홈</span>
     </div>
 
@@ -101,8 +83,8 @@
       </svg>
       <span class="text-xs font-semibold">일정</span>
     </button>
-
-    <!-- 메뉴 드롭다운 영역 -->
+    
+    <!-- Menu Dropdown -->
     <div class="relative w-1/5 flex flex-col items-center" ref="menuContainer">
       <transition name="fade">
         <div
@@ -133,15 +115,38 @@
           </button>
 
           <div class="w-10 h-[1px] bg-orange-50 rounded-full"></div>
-
-          <!-- 건강 상세 이동 버튼 -->
-          <button
-            @click="navigateTo('health')"
+          
+          <button 
+            @click="navigateTo('health')" 
             class="flex flex-col items-center justify-center gap-1.5 transition-colors text-[#8d6e63] hover:text-[#e76f51] w-full"
-            title="상세 건강 정보 이동"
           >
             <span class="material-symbols-outlined text-3xl">monitor_heart</span>
             <span class="text-[10px] font-bold uppercase tracking-wider">건강</span>
+          </button>
+
+          <div class="w-10 h-[1px] bg-orange-50 rounded-full"></div>
+
+          <button 
+            @click="navigateTo('realtime-hr')" 
+            class="flex flex-col items-center justify-center gap-1.5 transition-colors text-[#8d6e63] hover:text-[#e76f51] w-full"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            <span class="text-[10px] font-bold uppercase tracking-wider">심박수</span>
+          </button>
+
+          <div class="w-10 h-[1px] bg-orange-50 rounded-full"></div>
+          
+          <button 
+            @click="navigateTo('voice')" 
+            class="flex flex-col items-center justify-center gap-1.5 transition-colors text-[#8d6e63] hover:text-[#e76f51] w-full"
+            title="상세 건강 정보 이동"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+            <span class="text-[10px] font-bold uppercase tracking-wider">목소리</span>
           </button>
 
           <div class="w-10 h-[1px] bg-orange-50 rounded-full"></div>
@@ -189,29 +194,6 @@
                 d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
               />
             </svg>
-            <span class="text-[10px] font-bold uppercase tracking-wider">목소리</span>
-          </button>
-
-          <div class="w-10 h-[1px] bg-orange-50 rounded-full"></div>
-
-          <button
-            @click="handleLogout"
-            class="flex flex-col items-center justify-center gap-1.5 transition-colors text-[#8d6e63] hover:text-[#e76f51] w-full"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-8 w-8"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
             <span class="text-[10px] font-bold uppercase tracking-wider">로그아웃</span>
           </button>
         </div>
@@ -243,6 +225,7 @@
         <span class="text-xs font-semibold">메뉴</span>
       </button>
     </div>
+
   </div>
 </template>
 
@@ -264,13 +247,90 @@ const showMenu = ref(false);
 
 const menuContainer = ref(null);
 
-/**
- * 영역 외부 클릭 시 메뉴 드롭다운을 닫습니다. (내부 사용)
- * @param {MouseEvent} event
- */
 const handleOutsideClick = (event) => {
   if (showMenu.value && menuContainer.value && !menuContainer.value.contains(event.target)) {
     showMenu.value = false;
+  }
+};
+
+const updateActiveTab = () => {
+    if (route.path.startsWith('/families') && route.path.includes('/calendar')) {
+        activeTab.value = 'calendar';
+    } else if (route.path.includes('/gallery')) {
+        activeTab.value = 'gallery';
+    } else if (route.path === '/home') {
+        activeTab.value = 'home';
+    } else if (route.path.startsWith('/families') && route.path.includes('/messages')) {
+        activeTab.value = 'message';
+    } else if (route.path.startsWith('/families') && route.path.includes('/medications')) {
+        activeTab.value = 'menu';
+    } else if (route.path.includes('/health-detail')) {
+        activeTab.value = 'health';
+    } else if (route.path.includes('/voice-register')) {
+        activeTab.value = 'menu';
+    } else if (route.path.includes('/realtime-heart-rate')) {
+        activeTab.value = 'menu';
+    } else {
+        
+    }
+};
+
+onMounted(() => {
+  updateActiveTab();
+  window.addEventListener('click', handleOutsideClick);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', handleOutsideClick);
+});
+
+watch(() => route.path, updateActiveTab);
+
+const setActive = (tab) => {
+  showMenu.value = false;
+  activeTab.value = tab;
+
+
+  if (tab === 'calendar') {
+      const familyId = familyStore.selectedFamily?.id;
+      if (familyId) {
+          router.push({ name: 'CalendarPage', params: { familyId: familyId } });
+      } else {
+          modalStore.openAlert("가족 정보가 없습니다.");
+      }
+
+  } else if (tab === 'home') {
+      router.push('/home');
+  } else if (tab === 'message') {
+      
+      
+      if (!route.path.startsWith('/families') || !route.path.includes('/messages')) {
+        
+        const familyId = familyStore.selectedFamily?.id;
+        
+        if (familyId) {
+          router.push(`/families/${familyId}/messages`);
+        } else {
+          Logger.error('사용자 프로필 또는 저장소에서 familyId를 찾을 수 없습니다.');
+          modalStore.openAlert('가족 정보를 찾을 수 없습니다.');
+        }
+      }
+  } else if (tab === 'gallery') {
+      const familyId = familyStore.selectedFamily?.id;
+      if (familyId) {
+          router.push(`/families/${familyId}/gallery`);
+      } else {
+          modalStore.openAlert("가족 정보를 찾을 수 없습니다.");
+      }
+  } else if (tab === 'health') {
+      const familyId = familyStore.selectedFamily?.id;
+      if (familyId) {
+          router.push(`/families/${familyId}/health-detail`);
+      } else {
+          modalStore.openAlert("가족 정보를 찾을 수 없습니다.");
+      }
+  } else if (tab !== 'home') {
+     
   }
 };
 
@@ -350,54 +410,63 @@ const toggleMenu = () => {
 const navigateTo = (type) => {
   showMenu.value = false;
   activeTab.value = 'menu';
-
-  const familyId = familyStore.selectedFamily?.id;
-  if (!familyId) {
-    modalStore.openAlert('가족 정보를 찾을 수 없습니다.');
-    return;
-  }
-
-  const routes = {
-    voice: `/families/${familyId}/voice-register`,
-    medication: `/families/${familyId}/medications`,
-    health: `/families/${familyId}/health-detail`,
-    'realtime-hr': `/families/${familyId}/realtime-heart-rate`,
-  };
-
-  if (routes[type]) {
-    router.push(routes[type]);
+  
+  if (type === 'voice') {
+    const familyId = familyStore.selectedFamily?.id;
+    if (familyId) {
+      router.push(`/families/${familyId}/voice-register`);
+    } else {
+      modalStore.openAlert('가족 정보를 찾을 수 없습니다.');
+    }
+  } else if (type === 'medication') {
+    const familyId = familyStore.selectedFamily?.id;
+    
+    if (familyId) {
+      router.push(`/families/${familyId}/medications`);
+    } else {
+      modalStore.openAlert('가족 정보를 찾을 수 없습니다.');
+    }
+  } else if (type === 'health') {
+    const familyId = familyStore.selectedFamily?.id;
+    if (familyId) {
+      router.push(`/families/${familyId}/health-detail`);
+    } else {
+      modalStore.openAlert('가족 정보를 찾을 수 없습니다.');
+    }
+  } else if (type === 'realtime-hr') {
+    const familyId = familyStore.selectedFamily?.id;
+    if (familyId) {
+      router.push(`/families/${familyId}/realtime-heart-rate`);
+    } else {
+      modalStore.openAlert('가족 정보를 찾을 수 없습니다.');
+    }
   }
 };
 
-/**
- * 로그아웃을 처리합니다. 확인 모달을 표시하고 승인 시 토큰 삭제 및 페이지 이동을 수행합니다.
- */
 const handleLogout = async () => {
   showMenu.value = false;
-
-  const confirmed = await modalStore.openConfirm('정말로 로그아웃하시겠습니까?', '로그아웃');
-
+  
+  const confirmed = await modalStore.openConfirm(
+    "정말로 로그아웃하시겠습니까?",
+    "로그아웃"
+  );
+  
   if (confirmed) {
-    executeLogout();
+    
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('familyId');
+    localStorage.removeItem('currentFamilyId');
+    sessionStorage.removeItem('accessToken');
+    
+    userStore.clearUser();
+    
+    
+    if (window.AndroidBridge && window.AndroidBridge.logout) {
+      window.AndroidBridge.logout();
+    }
+    
+    
+    router.push('/login');
   }
-};
-
-/**
- * 토큰 및 사용자 상태를 정리하고 로그아웃을 실행합니다. (내부 사용)
- */
-const executeLogout = () => {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('familyId');
-  localStorage.removeItem('currentFamilyId');
-  sessionStorage.removeItem('accessToken');
-
-  userStore.clearUser();
-
-  /** Android Bridge 연동 */
-  if (window.AndroidBridge?.logout) {
-    window.AndroidBridge.logout();
-  }
-
-  router.push('/login');
 };
 </script>

@@ -14,20 +14,18 @@ export const useUserStore = defineStore('user', () => {
   /** @type {import('vue').ComputedRef<boolean>} 인증 여부 반환 */
   const isAuthenticated = computed(() => !!profile.value);
 
-  /**
-   * 서버로부터 사용자 프로필 정보를 가져와 상태를 동기화합니다.
-   * @param {boolean} [force=false] 캐시 무시 여부 (true일 경우 항상 서버 호출)
-   * @returns {Promise<boolean>} 성공 여부
-   */
   async function fetchUser(force = false) {
-    if (!shouldFetch(force)) return true;
+    
+    if (!force && profile.value) return true;
 
     try {
+      
       const response = await getUserProfile({ headers: { silent: true } });
       profile.value = response.data;
       return true;
     } catch (error) {
-      handleFetchError(error);
+      profile.value = null;
+      Logger.error("사용자 프로필 조회 실패:", error);
       return false;
     }
   }

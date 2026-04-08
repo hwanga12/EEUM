@@ -31,7 +31,7 @@ class ServerClient:
         self.rpi_url = rpi_url or RPI_URL
         self.timeout = timeout
     
-    # ===== QR 페어링 및 장치 등록 =====
+    
 
     def register_device(self, pairing_code: str, device_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -40,7 +40,8 @@ class ServerClient:
         """
         try:
             url = f"{self.server_url}/api/iot/auth/pairing"
-            # 마스터 장치(Jetson)와 함께 등록될 하위 장치 목록 구성
+            
+            
             child_devices = [
                 {"serial_number": device_id, "device_type": "JETSON"},
                 {"serial_number": "EEUM-R105", "device_type": "RPI"},
@@ -66,8 +67,7 @@ class ServerClient:
             logger.error(f"Device registration failed: {e}")
             return None
     
-    # ===== 하위 장치(RPI) 제어 =====
-
+    
     def send_access_token_to_rpi(self, access_token: str) -> bool:
         """라즈베리파이에 인증 토큰을 전달하여 동기화합니다."""
         try:
@@ -75,14 +75,13 @@ class ServerClient:
             payload = {"token": access_token}
             resp = requests.post(url, json=payload, timeout=self.timeout)
             resp.raise_for_status()
-            logger.info("Access token synchronized with RPI")
+            logger.info("Access token sent to RPI")
             return True
         except Exception as e:
-            logger.error(f"Token sync with RPI failed: {e}")
+            logger.error(f"Access token send to RPI failed: {e}")
             return False
 
-    # ===== 토큰 관리 =====
-
+    
     def get_access_token(self, refresh_token: str) -> Optional[Dict[str, Any]]:
         """리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받습니다."""
         try:
@@ -103,7 +102,7 @@ class ServerClient:
             logger.error(f"Token refresh request failed: {e}")
             return None
 
-    # ===== 이벤트 및 사고 데이터 전송 =====
+    
     
     def send_event_rpi(self, payload: Dict[str, Any]) -> bool:
         """낙상/입퇴실 이벤트를 라즈베리파이로 전송하여 알림 및 제어를 수행합니다."""
@@ -135,8 +134,9 @@ class ServerClient:
             logger.info(f"Fall event reported. videoPath: {video_path}")
             return presigned_url, video_path
         except Exception as e:
-            logger.error(f"Fall event reporting failed: {e}")
-            return None, None
+            logger.error(f"Event send failed: {e}")
+            return (None, None)
+    
     
     def upload_clip_via_presigned_put(self, presigned_url: str, clip_path: str, timeout: float = 120.0):
         """Pre-signed URL을 사용하여 가공된 사고 영상을 S3 등의 저장소로 직접 업로드합니다."""
@@ -147,28 +147,106 @@ class ServerClient:
             resp = requests.put(
                 presigned_url,
                 data=f,
-                headers={"Content-Type": "video/mp4"},
+                headers={"Content-Type": "video/mp4"},  
                 timeout=timeout,
             )
 
-        if resp.status_code not in (200, 201, 204):
-            raise RuntimeError(f"Cloud storage upload failed: {resp.status_code} {resp.text}")
+        
+        if resp.status_code in (200, 201, 204):
+            return
 
-    def send_video_upload_success(self, video_path: str, access_token: str) -> bool:
-        """영상 업로드가 성공적으로 완료되었음을 서버에 알려 DB 처리를 완료시킵니다."""
+        print("[DBG] status", resp.status_code, "headers", dict(resp.headers), "body", resp.text[:500], flush=True)
+
+        
+        raise RuntimeError(
+            f"S3 upload failed | "
+            f"status={resp.status_code} | "
+            f"response={resp.text[:1000]}"
+        )
+
+    
+    def send_video_upload_success(self, video_path: str, access_token: str) -> None:
+        """
+        낙상 영상 업로드 성공 이벤트 전송
+        
+        Args:
+            payload: {
+                "videoPath":"falls/group_1/20260129_120000.mp4"// S3 내 실제 파일 경로
+            }
+        """
         try:
             url = f"{self.server_url}/api/iot/device/falls/upload-success"
             payload = {"videoPath": video_path}
             headers = {"Authorization": f"Bearer {access_token}"}
             resp = requests.post(url, json=payload, headers=headers, timeout=self.timeout)
             resp.raise_for_status()
-            logger.info(f"Video finalization notified: {video_path}")
+            logger.info(f"Event success sent: {payload}")
+
+        except Exception as e:
+            logger.error(f"Event success send failed: {e}")
+
+    
+    def get_presigned_url(self, event_id: str, filename: str, groupId: int, access_token: str) -> Optional[str]:
+        """
+        낙상 영상 업로드용 presigned_url 요청
+        
+        Args:
+            event_id: 이벤트 ID
+            filename: 업로드할 파일명
+            group_id: 그룹 ID
+            access_token: 액세스 토큰
+            
+        Returns:
+            presigned_url or None
+        """
+        try:
+            url = f"{self.server_url}/api/iot/device/falls/presigned-url"
+            params = {
+                "event_id": event_id,
+                "filename": filename,
+                "groupId": groupId
+            }
+            headers = {
+                "Authorization": f"Bearer {access_token}"
+            }
+            resp = requests.get(url, params=params, headers=headers, timeout=self.timeout)
+            resp.raise_for_status()
+            result = resp.json()
+            presigned_url = result.get("presigned_url")
+            logger.info(f"Presigned URL obtained for event: {event_id}")
+            return presigned_url
+        except Exception as e:
+            logger.error(f"Get presigned URL failed: {e}")
+            return None
+
+    def send_clip(self, event_id: str, clip_path: str, payload: Dict[str, Any]) -> bool:
+        """
+        낙상 영상 클립 전송
+        
+        Args:
+            event_id: 이벤트 ID
+            clip_path: 로컬 클립 파일 경로
+            payload: 메타데이터
+        """
+        try:
+            url = f"{self.server_url}/clips"
+            
+            with open(clip_path, "rb") as f:
+                files = {"file": f}
+                data = {
+                    "event_id": event_id,
+                    "payload": str(payload),
+                }
+                resp = requests.post(url, files=files, data=data, timeout=self.timeout)
+                resp.raise_for_status()
+            
+            logger.info(f"Clip sent: {event_id}")
             return True
         except Exception as e:
             logger.error(f"Finalization notification failed: {e}")
             return False
-
-    # ===== 데이터 수집 및 상태 확인 =====
+    
+    
     
     def ping(self) -> bool:
         """백엔드 서버와의 연결 상태를 점검합니다."""
@@ -179,50 +257,68 @@ class ServerClient:
         except Exception:
             return False
 
-    # ===== WebSocket 스트리밍 제어 =====
+    
     
     def connect_websocket(self, device_id: str) -> bool:
-        """분석 영상을 실시간으로 송출하기 위한 WebSocket 연결을 수립합니다."""
+        """
+        WebSocket 연결 및 장치 등록
+        """
         import websocket
         import json
         
-        self.device_id = device_id
+        self.device_id = device_id  
+        
         try:
             ws_url = self.server_url.replace("http", "ws") + "/api/ws/stream"
             self.ws = websocket.WebSocket()
             self.ws.connect(ws_url, timeout=5)
             
-            # 장치 활성화 상태 등록 메시지 전송
-            msg = {"type": "REGISTER_DEVICE", "deviceId": device_id}
+            
+            msg = {
+                "type": "REGISTER_DEVICE",
+                "deviceId": device_id
+            }
             self.ws.send(json.dumps(msg))
-            logger.info(f"WebSocket streaming established for {device_id}")
+            logger.info(f"WebSocket connected and registered as {device_id}")
             return True
         except Exception as e:
-            logger.error(f"WebSocket establishment failed: {e}")
+            logger.error(f"WebSocket connection failed: {e}")
             self.ws = None
             return False
 
     def send_stream_frame(self, frame_bytes: bytes):
-        """인코딩된 JPEG 프레임 데이터를 WebSocket을 통해 바이너리로 전송합니다."""
-        # 연결이 끊겼을 경우 재연결 시도
+        """
+        WebSocket으로 프레임 전송 (Binary)
+        연결이 끊겨있으면 재연결 시도
+        """
+        
         if not (hasattr(self, 'ws') and self.ws and self.ws.connected):
              if hasattr(self, 'device_id') and self.device_id:
-                 if not self.connect_websocket(self.device_id): return
+                 logger.info("Attempting to reconnect WebSocket...")
+                 if not self.connect_websocket(self.device_id):
+                     return 
 
         if hasattr(self, 'ws') and self.ws and self.ws.connected:
             try:
                 self.ws.send_binary(frame_bytes)
             except Exception as e:
-                logger.error(f"Streaming frame send error: {e}")
-                try: self.ws.close()
-                except: pass
+                logger.error(f"WebSocket send failed: {e}")
+                try:
+                    self.ws.close()
+                except:
+                    pass
                 self.ws = None
+                
     
     def close_websocket(self):
-        """실시간 영상 스트리밍 연결을 안전하게 종료합니다."""
+        """
+        WebSocket 연결 종료
+        """
         if hasattr(self, 'ws') and self.ws:
             try:
                 self.ws.close()
-            except: pass
+            except:
+                pass
             self.ws = None
-            logger.info("WebSocket streaming closed")
+            logger.info("WebSocket closed")
+

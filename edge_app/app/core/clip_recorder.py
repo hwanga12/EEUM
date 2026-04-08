@@ -1,5 +1,7 @@
 import os
 import logging
+
+logger = logging.getLogger(__name__)
 import cv2
 import time
 import numpy as np
@@ -16,7 +18,7 @@ from ..config import (
     CLIP_DIR, CLIP_FPS, CLIP_PRE_SEC, CLIP_POST_SEC,
     CLIP_COOLDOWN_S, CLIP_EVENT_POST_SEC,
     CLIP_RESIZE_WIDTH, CLIP_RESIZE_HEIGHT,
-    ABNORMAL_TIMEOUT_S, JPEG_QUALITY
+    ABNORMAL_TIMEOUT_S, JPEG_QUALITY  
 )
 
 logger = logging.getLogger(__name__)
@@ -25,29 +27,27 @@ os.makedirs(CLIP_DIR, exist_ok=True)
 
 class ClipRecorder:
     """
-    이벤트 발생 시 과거(PRE) 프레임과 이후(POST) 프레임을 조합하여 영상을 저장하는 클래스입니다.
-    
-    특징:
-    - 링버퍼(Ring Buffer)를 사용하여 항상 최신 일정 기간의 프레임을 유지합니다.
-    - 메모리 절약을 위해 프레임을 JPEG로 인코딩하여 저장합니다.
-    - FFmpeg를 통해 브라우저에서 재생 가능한 웹 친화적인 MP4 형식을 생성합니다.
+    Level1 발생 시 "과거 PRE_SEC + 이후 POST_SEC" 프레임을 mp4로 저장하는 클래스.
+    - 내부에 링버퍼를 가지고 있다. ([timestamp, jpeg_bytes])
+    - push() 시 JPEG 인코딩하여 메모리를 절약한다. (800MB -> 50MB)
     """
 
     def __init__(self):
         self.lock = threading.Lock()
         
-        # [버퍼 크기 계산]
-        # 사람 감지 유실 시 루프 속도가 매우 빨라질 수 있으므로(60fps+),
-        # 안전하게 60fps 기준으로 일정 시간(약 52초) 분량의 버퍼를 확보합니다.
+        
+        
+        
+        
         required_duration = ABNORMAL_TIMEOUT_S + CLIP_PRE_SEC + CLIP_POST_SEC + 10.0
         safety_fps = 60.0 
         buf_size = int(safety_fps * required_duration)
         
         self.buffer: Deque[Tuple[float, bytes]] = collections.deque(maxlen=buf_size)
         self.last_push_ts = 0.0
-        self.min_push_interval = 1.0 / 24.0 # 최대 24 FPS로 제한하여 버퍼 밀림 방지
+        self.min_push_interval = 1.0 / 24.0 
 
-        # 분석용 메타데이터 링버퍼 (ts, meta)
+        
         self.meta_buffer: Deque[Tuple[float, Dict[str, Any]]] = collections.deque(maxlen=buf_size)
 
         self.recording = False
@@ -56,18 +56,32 @@ class ClipRecorder:
         self.clip_path: Optional[str] = None
         self.last_started_ts: float = 0.0
         
-        # 중복 저장 방지용 변수
-        self.last_saved_segment_ts: float = 0.0
-        self.save_segment_cooldown: float = 3.0   # 3초 내 중복 저장 방지
+        
+        self.last_saved_segment_ts: float = 0.0  
+        self.save_segment_cooldown: float = 3.0   
 
     def push(self, ts: float, frame_bgr, meta: Optional[Dict[str, Any]] = None):
-        """
-        프레임과 메타데이터를 링버퍼에 추가합니다.
         
-        Args:
-            ts: 현재 프레임의 타임스탬프
-            frame_bgr: BGR 포맷의 이미지 데이터
-            meta: 해당 프레임의 분석 결과 메타데이터 (선택 사항)
+        """
+        프레임과 (선택) 메타를 버퍼에 쌓는다.
+        meta에는 "측정에 쓰이는 값 + 측정값"만 최소로 넣는 것을 권장.
+
+        meta 예시(최소):
+            {
+              "frame_index": 123,
+              "state": "NORMAL|ABNORMAL|LEVEL1",
+              "ghost": False,
+              "quality": 0.71,
+              "bbox": [x1,y1,x2,y2],
+              "aspect": 1.85,
+              "baseline": 2.40,          # 또는 baseline_at_enter
+              "cy": 0.52,
+              "vy": 0.36,
+              "drop": True,
+              "posture": False,
+              "is_partial": False,
+              "is_still": True
+            }
         """
         with self.lock:
             if ts - self.last_push_ts < self.min_push_interval:
@@ -77,19 +91,20 @@ class ClipRecorder:
         if frame_bgr is None:
             return
 
-        # 1. 속도 및 용량 최적화를 위한 리사이즈
+        
         h, w = frame_bgr.shape[:2]
         if w != CLIP_RESIZE_WIDTH or h != CLIP_RESIZE_HEIGHT:
             frame_bgr = cv2.resize(frame_bgr, (CLIP_RESIZE_WIDTH, CLIP_RESIZE_HEIGHT))
 
-        # 2. 메모리 점유율을 대폭 낮추기 위해 JPEG로 인코딩하여 저장
+        
+        
         ok, jpg_bytes = cv2.imencode(".jpg", frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
         
         if ok:
             with self.lock:
                 self.buffer.append((ts, jpg_bytes.tobytes()))
                 if meta is not None:
-                    # JSON 직렬화가 가능한 데이터만 선별하여 저장
+                    
                     self.meta_buffer.append((ts, meta))
 
     def _open_writer(self, path: str, fps: float, frame_shape: Tuple[int, int, int]):
@@ -99,16 +114,18 @@ class ClipRecorder:
         """
         h, w = frame_shape[:2]
         
+        
         if w <= 0 or h <= 0:
-            logger.error(f"[CLIP] 유효하지 않은 해상도: {w}x{h}")
-            raise ValueError(f"유효하지 않은 해상도: {w}x{h}")
+            logger.error(f"[CLIP] 프레임 해상도 유효하지 않음: {w}x{h}")
+            raise ValueError(f"프레임 해상도 유효하지 않음: {w}x{h}")
+        
         
         fps = float(fps)
         if fps <= 0 or fps > 240:
-            logger.warning(f"[CLIP] FPS 값이 범위를 벗어남 ({fps}), [5, 240]으로 조정")
+            logger.warning(f"[CLIP] FPS 범위 벗어남: {fps}, [5, 240]로 조정 중")
             fps = max(5.0, min(240.0, fps))
         
-        # 호환성을 위한 코덱 시도 목록
+        
         codecs = [
             ("mp4v", "mp4v"),
             ("MJPG", "mjpg"),
@@ -122,17 +139,19 @@ class ClipRecorder:
                 fourcc = cv2.VideoWriter_fourcc(*codec_code)
                 writer = cv2.VideoWriter(path, fourcc, fps, (w, h))
                 
+                
                 if writer.isOpened():
-                    logger.info(f"[CLIP] VideoWriter가 '{codec_name}' 코덱으로 열림: {w}x{h} @ {fps}fps")
+                    logger.info(f"[CLIP] 코덱으로 VideoWriter 열기 '{codec_name}': {w}x{h} @ {fps}fps")
                     return writer
                 else:
+                    logger.warning(f"[CLIP] 코덱 '{codec_name}' 열기 실패: {w}x{h} @ {fps}fps")
                     writer.release()
             except Exception as e:
-                logger.warning(f"[CLIP] 코덱 '{codec_name}' 시도 중 오류: {e}")
+                logger.warning(f"[CLIP] 코덱 '{codec_name}' 오류: {e}")
                 continue
         
-        # 모드 코덱 실패 시 기본 설정 사용
-        logger.error(f"[CLIP] 모든 코덱 시도가 실패함. 기본 엔진 사용.")
+        logger.error(f"[CLIP] 모든 코덱이 실패함 {w}x{h} @ {fps}fps. 기본 writer 생성 중.")
+        
         writer = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (w, h))
         return writer
 
@@ -149,8 +168,11 @@ class ClipRecorder:
                 "meta_buffer_len": len(self.meta_buffer),
             }
 
+
     def _dump_jsonl(self, jsonl_path: str, records: List[Dict[str, Any]]) -> None:
-        """분석 데이터(메타데이터)를 JSONL 파일로 저장합니다."""
+        """
+        jsonl 저장(실패해도 영상 저장은 유지)
+        """
         try:
             with open(jsonl_path, "w", encoding="utf-8") as f:
                 for rec in records:
@@ -176,10 +198,19 @@ class ClipRecorder:
             if len(self.buffer) == 0:
                 return None
 
-            # 중복 저장 방지 (3초 쿨다운 적용)
+            
+            
+            
+            
             now = time.time()
-            if (now - self.last_saved_segment_ts) < self.save_segment_cooldown:
-                logger.warning(f"[CLIP] 중복 저장 시도 무시됨: {now:.2f}")
+            time_since_last_save = now - self.last_saved_segment_ts
+            if time_since_last_save < self.save_segment_cooldown:
+                logger.warning(
+                    f"[CLIP] Duplicate save attempt ignored: "
+                    f"last_saved={self.last_saved_segment_ts:.2f}, "
+                    f"now={now:.2f}, "
+                    f"cooldown={self.save_segment_cooldown}s"
+                )
                 return None
             
             self.last_saved_segment_ts = now
@@ -187,93 +218,189 @@ class ClipRecorder:
             t_start = incident_ts - float(pre_sec)
             t_end = incident_ts + float(post_sec)
 
-            picked = []
+            picked = []  
             for ts, jpg_bytes in list(self.buffer):
                 if t_start <= ts <= t_end:
                     picked.append((ts, jpg_bytes))
 
             if not picked:
-                logger.warning(f"[CLIP] 해당 시간 범위에 데이터가 없음: [{t_start:.2f}, {t_end:.2f}]")
+                buf_ts_start = self.buffer[0][0]
+                buf_ts_end = self.buffer[-1][0]
+                logger.warning(
+                    f"[CLIP] No frames in range [{t_start:.2f}, {t_end:.2f}] "
+                    f"(buffer available: [{buf_ts_start:.2f}, {buf_ts_end:.2f}])"
+                )
                 return None
 
-            # 실제 FPS 추정하여 영상 배속 방지
-            span = max(1e-6, picked[-1][0] - picked[0][0])
+            
+            ts0 = picked[0][0]
+            ts1 = picked[-1][0]
+            span = max(1e-6, ts1 - ts0)
             eff_fps = len(picked) / span
+
+            
+            
             eff_fps = max(1.0, min(float(CLIP_FPS), eff_fps))
 
             clip_id = datetime.now().strftime("%Y%m%d_%H%M%S")
             mp4_path = os.path.join(CLIP_DIR, f"{filename_prefix}_{clip_id}.mp4")
             jsonl_path = os.path.join(CLIP_DIR, f"{filename_prefix}_{clip_id}.jsonl")
 
-            # 첫 프레임 디코딩 (비디오 라이터 설정용)
+            
             first_frame = cv2.imdecode(np.frombuffer(picked[0][1], np.uint8), cv2.IMREAD_COLOR)
             if first_frame is None:
+                logger.error("[CLIP] failed to decode first frame")
                 return None
 
             writer = self._open_writer(mp4_path, eff_fps, first_frame.shape)
             if not writer.isOpened():
+                logger.error(f"[CLIP] writer open failed: {mp4_path}")
+                try:
+                    writer.release()
+                except Exception:
+                    pass
                 return None
 
             writer_w, writer_h = first_frame.shape[1], first_frame.shape[0]
+            logger.info(
+                f"[CLIP] saving segment incident={incident_ts:.2f} "
+                f"range=[{t_start:.2f},{t_end:.2f}] frames={len(picked)} "
+                f"eff_fps={eff_fps:.1f} size={writer_w}x{writer_h} path={mp4_path}"
+            )
 
-        # 디코딩 및 쓰기 작업 (메인 루프 차단 방지를 위해 락 해제 후 수행)
+        
         try:
             for _, jpg_bytes in picked:
                 fr = cv2.imdecode(np.frombuffer(jpg_bytes, np.uint8), cv2.IMREAD_COLOR)
-                if fr is None: continue
+                if fr is None:
+                    continue
                 if fr.shape[1] != writer_w or fr.shape[0] != writer_h:
                     fr = cv2.resize(fr, (writer_w, writer_h))
                 writer.write(fr)
         finally:
-            writer.release()
+            try:
+                writer.release()
+            except Exception:
+                pass
 
-        # 웹 브라우저 재생 호환성을 위한 트랜스코딩
         mp4_path = self.transcode_mp4_for_web(mp4_path)
+
         
-        # 메타데이터도 함께 저장
+        
         with self.lock:
-            meta_picked = []
+            meta_picked: List[Dict[str, Any]] = []
             for mts, m in list(self.meta_buffer):
                 if t_start <= mts <= t_end:
-                    KEEP_KEYS = {"frame_index", "state", "bbox", "aspect", "vy", "drop", "is_still"}
+                    
+                    
+                    KEEP_KEYS = {
+                        "frame_index",
+                        "state",
+                        "ghost",
+                        "quality",
+                        "bbox",
+                        "aspect",
+                        "baseline",
+                        "cy",
+                        "vy",
+                        "drop",
+                        "posture",
+                        "is_partial",
+                        "is_still",
+                    }
                     rec = {k: m.get(k) for k in KEEP_KEYS if k in m}
                     rec["ts"] = float(mts)
                     meta_picked.append(rec)
-                    
+
         if meta_picked:
             self._dump_jsonl(jsonl_path, meta_picked)
 
         return mp4_path
 
     def save_range(self, t_start: float, t_end: float, filename_prefix: str = "incident") -> Optional[str]:
-        """지정된 시간 범위 [t_start, t_end]의 영상을 저장합니다."""
-        if t_end <= t_start: return None
+        """
+        버퍼에서 [t_start, t_end] 범위를 추출해서 저장한다.
+        사고 '진입~확정' 같이 비대칭 구간 저장이 필요할 때 사용.
+        """
+
+        if t_end <= t_start:
+            return None
 
         with self.lock:
-            now = time.time()
-            if (now - self.last_saved_segment_ts) < self.save_segment_cooldown: return None
-            self.last_saved_segment_ts = now
-            picked = [(ts, b) for ts, b in list(self.buffer) if t_start <= ts <= t_end]
-            if not picked: return None
+            if len(self.buffer) == 0:
+                return None
 
-        # FPS 추정 및 파일 경로 설정
-        span = max(1e-6, picked[-1][0] - picked[0][0])
-        eff_fps = max(1.0, min(float(CLIP_FPS), len(picked) / span))
+            
+            now = time.time()
+            if (now - self.last_saved_segment_ts) < self.save_segment_cooldown:
+                logging.warning(
+                    f"[CLIP] Duplicate save attempt ignored: last_saved={self.last_saved_segment_ts:.2f}, now={now:.2f}"
+                )
+                return None
+            self.last_saved_segment_ts = now
+
+            picked = []
+            for ts, jpg_bytes in list(self.buffer):
+                if t_start <= ts <= t_end:
+                    picked.append((ts, jpg_bytes))
+
+            if not picked:
+                buf_ts_start = self.buffer[0][0]
+                buf_ts_end = self.buffer[-1][0]
+                logging.warning(
+                    f"[CLIP] No frames in range [{t_start:.2f}, {t_end:.2f}] "
+                    f"(buffer available: [{buf_ts_start:.2f}, {buf_ts_end:.2f}])"
+                )
+                return None
+
+        
+        ts0 = picked[0][0]
+        ts1 = picked[-1][0]
+        span = max(1e-6, ts1 - ts0)
+        eff_fps = len(picked) / span
+        eff_fps = max(1.0, min(float(CLIP_FPS), eff_fps))
+
         clip_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         path = os.path.join(CLIP_DIR, f"{filename_prefix}_{clip_id}.mp4")
 
-        # 프레임 쓰기
         first_frame = cv2.imdecode(np.frombuffer(picked[0][1], np.uint8), cv2.IMREAD_COLOR)
-        if first_frame is None: return None
-        writer = self._open_writer(path, eff_fps, first_frame.shape)
-        try:
-            for _, b in picked:
-                fr = cv2.imdecode(np.frombuffer(b, np.uint8), cv2.IMREAD_COLOR)
-                if fr is not None: writer.write(fr)
-        finally:
-            writer.release()
+        if first_frame is None:
+            logging.error("[CLIP] Failed to decode first frame. Abort.")
+            return None
 
-        return self.transcode_mp4_for_web(path)
+        writer = self._open_writer(path, eff_fps, first_frame.shape)
+        if not writer.isOpened():
+            logging.error(f"[CLIP] VideoWriter failed to open: path={path}")
+            try:
+                writer.release()
+            except Exception:
+                pass
+            return None
+
+        writer_w = first_frame.shape[1]
+        writer_h = first_frame.shape[0]
+
+        logging.info(
+            f"[CLIP] saving range start={t_start:.2f} end={t_end:.2f} "
+            f"frames={len(picked)} eff_fps={eff_fps:.1f} size={writer_w}x{writer_h} path={path}"
+        )
+
+        try:
+            for _, jpg_bytes in picked:
+                fr = cv2.imdecode(np.frombuffer(jpg_bytes, np.uint8), cv2.IMREAD_COLOR)
+                if fr is None:
+                    continue
+                if fr.shape[1] != writer_w or fr.shape[0] != writer_h:
+                    fr = cv2.resize(fr, (writer_w, writer_h))
+                writer.write(fr)
+        finally:
+            try:
+                writer.release()
+            except Exception:
+                pass
+
+        path = self.transcode_mp4_for_web(path)
+        return path
 
     def transcode_mp4_for_web(self, in_path: str) -> str:
         """FFmpeg를 호출하여 영상을 스트리밍에 최적화된 형식(H.264, Faststart)으로 변환합니다."""

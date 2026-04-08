@@ -3,8 +3,33 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("kotlin-parcelize") // Samsung Health SDK 데이터 처리를 위해 필요
-    id("com.google.gms.google-services") // Firebase 연동
+    id("kotlin-parcelize") // sh sdk
+}
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        load(file.inputStream())
+    }
+}
+
+val googleServicesFile = file("google-services.json")
+val googleServicesSourcePath = localProperties.getProperty("GOOGLE_SERVICES_JSON_PATH")
+    ?: System.getenv("GOOGLE_SERVICES_JSON_PATH")
+
+if (!googleServicesFile.exists() && !googleServicesSourcePath.isNullOrBlank()) {
+    val sourceFile = file(googleServicesSourcePath)
+    if (sourceFile.exists()) {
+        sourceFile.copyTo(googleServicesFile, overwrite = false)
+    } else {
+        logger.warn("GOOGLE_SERVICES_JSON_PATH points to a missing file: $googleServicesSourcePath")
+    }
+}
+
+if (googleServicesFile.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.warn("google-services.json not found. Firebase Google Services plugin was not applied.")
 }
 
 android {
@@ -20,19 +45,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // local.properties 파일 로드 (비공개 키, URL 등)
-        val localProperties = Properties().apply {
-            val file = rootProject.file("local.properties")
-            if (file.exists()) {
-                load(file.inputStream())
-            }
-        }
-
-        // 환경 변수 설정 (기본값 제공)
         val webviewUrl = localProperties.getProperty("WEBVIEW_URL") ?: "https://i14a105.p.ssafy.io"
         val apiBaseUrl = localProperties.getProperty("API_BASE_URL") ?: "https://i14a105.p.ssafy.io"
 
-        // BuildConfig에 필드 추가
         buildConfigField("String", "WEBVIEW_URL", "\"$webviewUrl\"")
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
@@ -52,7 +67,7 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = true // BuildConfig 클래스 생성 허용
+        buildConfig = true
     }
 }
 
@@ -92,28 +107,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
-
-    // ------------------------------------------------------------
-    // 4. Wearable Integration (데이터 레이어)
-    // ------------------------------------------------------------
-    implementation(libs.play.services.wearable) // Wearable Data Layer API
-    implementation(libs.kotlinx.coroutines.play.services) // Play Services용 코루틴 확장
-
-    // ------------------------------------------------------------
-    // 5. Firebase (FCM)
-    // ------------------------------------------------------------
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-    implementation("com.google.firebase:firebase-messaging")
-
-    // ------------------------------------------------------------
-    // 6. Utils & WorkManager
-    // ------------------------------------------------------------
-    implementation("com.google.code.gson:gson:2.10.1") // JSON 파싱
-    implementation(libs.androidx.work.runtime.ktx) // 백그라운드 작업
-
-    // ------------------------------------------------------------
-    // 7. Testing
-    // ------------------------------------------------------------
+    // Wearable
+    implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -121,5 +117,12 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-messaging")
+    
+    // WorkManager [cite: 1085]
+    implementation(libs.androidx.work.runtime.ktx)
+
 }
 

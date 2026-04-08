@@ -18,13 +18,6 @@ spring:
     properties:
       hibernate:
 
-  mqtt:
-    inbound-topics: "eeum/sensor/data,eeum/ai/sentiment,eeum/family/code,eeum/init/device/+/req,eeum/fall/response,eeum/init/device/pair/req,eeum/response,eeum/event,eeum/update,eeum/status,eeum/responsenull"
-
-  threads:
-    virtual:
-      enabled: true
-
 jwt:
   private-key-path: certs/private_key_pkcs8.pem
   public-key-path: certs/public_key.pem
@@ -38,26 +31,8 @@ logging:
     org.springframework.security.oauth2: info
 
 eeum:
-  swagger-url: https://i14a105.p.ssafy.io
+  swagger-url: http://localhost:8080
   webhook-url: https://i14a105.p.ssafy.io/api/voice/webhook/tts
-  log:
-    max-payload-length: 500
-    exclude-paths:
-      - /swagger-ui
-      - /v3/api-docs
-      - /favicon.ico
-      - /actuator
-
-app:
-  cors:
-    allowed-origins: "http://localhost:*,http://127.0.0.1:*,http://10.0.2.2:*,http://192.168.0.*:*,https://i14a105.p.ssafy.io"
-  emulator-host: "10.0.2.2"
-  frontend-url: "https://i14a105.p.ssafy.io"
-  oauth-callback-url: "https://i14a105.p.ssafy.io/oauth/callback"
-
-firebase:
-  config-path: "/serviceAccountKey.json"
-
 
 ---
 # 2. 배포 환경 설정 (프로필 이름: prod)
@@ -72,9 +47,3 @@ server:
 eeum:
   swagger-url: https://i14a105.p.ssafy.io
   webhook-url: https://i14a105.p.ssafy.io/api/voice/webhook/tts
-
-app:
-  cors:
-    allowed-origins: "https://i14a105.p.ssafy.io"
-  frontend-url: "https://i14a105.p.ssafy.io"
-  oauth-callback-url: "https://i14a105.p.ssafy.io/oauth/callback"

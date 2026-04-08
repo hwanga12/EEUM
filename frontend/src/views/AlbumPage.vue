@@ -10,17 +10,9 @@
     <!-- 상단 앱바 -->
     <div class="flex items-center bg-background-light p-4 pb-2 justify-between sticky top-0 z-10">
       <div class="flex items-center gap-2">
-        <button
-          @click="$router.back()"
-          class="p-2 -ml-2 rounded-full hover:bg-primary/10 transition-colors"
-        >
+        <button @click="$router.back()" class="p-2 -ml-2 rounded-full hover:bg-primary/10 transition-colors">
           <svg class="w-6 h-6 text-[#1c140d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M15 19l-7-7 7-7"
-            />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <div class="flex flex-col">
@@ -33,64 +25,50 @@
       <div class="flex items-center gap-4">
         <EeumDatePicker v-model="filterDateLocal">
           <template #trigger>
-            <button
-              class="flex items-center gap-1 text-primary text-base font-bold leading-normal tracking-[0.015em]"
-            >
+            <button class="flex items-center gap-1 text-primary text-base font-bold leading-normal tracking-[0.015em]">
               <span class="material-symbols-outlined text-lg">calendar_today</span>
             </button>
           </template>
         </EeumDatePicker>
-        <button
-          v-if="canManage"
-          @click="toggleSelectionMode"
-          class="text-primary text-base font-bold leading-normal tracking-[0.015em] shrink-0"
+        <button 
+            v-if="canManage"
+            @click="toggleSelectionMode"
+            class="text-primary text-base font-bold leading-normal tracking-[0.015em] shrink-0"
         >
-          {{ isSelectionMode ? '취소' : '편집' }}
+            {{ isSelectionMode ? '취소' : '편집' }}
         </button>
       </div>
     </div>
 
-    <!-- 필터 칩 섹션 -->
+    <!-- Filter Chips Section -->
 
-    <!-- 4열 이미지 그리드 -->
+
+    <!-- 4-Column ImageGrid -->
     <div class="flex-1 overflow-y-auto px-4 pb-32">
       <div v-if="photos.length > 0" class="grid grid-cols-4 gap-1.5">
-        <div
-          v-for="photo in photos"
-          :key="photo.photoId || photo.id"
-          class="relative group aspect-square"
-          @click="handlePhotoClick(photo)"
+        <div 
+            v-for="photo in photos" 
+            :key="photo.photoId || photo.id" 
+            class="relative group aspect-square"
+            @click="handlePhotoClick(photo)"
         >
-          <div
-            class="w-full h-full bg-[#f4ede7] rounded-sm cursor-pointer border-2 transition-all duration-200 overflow-hidden"
-            :class="
-              selectedPhotos.includes(photo.photoId || photo.id)
-                ? 'border-primary opacity-80 scale-95'
-                : 'border-transparent hover:border-primary'
-            "
+          <div 
+            class="w-full h-full bg-[#f4ede7] rounded-sm cursor-pointer border-2 transition-all duration-200 overflow-hidden" 
+            :class="selectedPhotos.includes(photo.photoId || photo.id) ? 'border-primary opacity-80 scale-95' : 'border-transparent hover:border-primary'"
           >
-            <img
-              :src="photo.displayUrl"
+            <img 
+              :src="photo.displayUrl" 
               :alt="photo.description || '사진'"
               loading="lazy"
               class="w-full h-full object-cover rounded-sm image-fade-in"
               @error="handleImageError"
             />
           </div>
-
+          
           <!-- 선택 확인 표시 -->
-          <div
-            v-if="isSelectionMode"
-            class="absolute top-1 right-1 w-5 h-5 rounded-full border border-white flex items-center justify-center"
-            :class="
-              selectedPhotos.includes(photo.photoId || photo.id) ? 'bg-primary' : 'bg-black/30'
-            "
-          >
-            <span
-              v-if="selectedPhotos.includes(photo.photoId || photo.id)"
-              class="material-symbols-outlined text-white text-sm"
-              >check</span
-            >
+          <div v-if="isSelectionMode" class="absolute top-1 right-1 w-5 h-5 rounded-full border border-white flex items-center justify-center"
+               :class="selectedPhotos.includes(photo.photoId || photo.id) ? 'bg-primary' : 'bg-black/30'">
+              <span v-if="selectedPhotos.includes(photo.photoId || photo.id)" class="material-symbols-outlined text-white text-sm">check</span>
           </div>
         </div>
       </div>
@@ -101,10 +79,7 @@
     </div>
 
     <!-- 하단 부유 액션 바 (편집 모드 시) -->
-    <div
-      v-if="isSelectionMode"
-      class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-[#e8dbce] z-50"
-    >
+    <div v-if="isSelectionMode" class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-[#e8dbce] z-50">
       <div class="flex items-center justify-between max-w-lg mx-auto">
         <div class="flex flex-col">
           <p class="text-sm font-bold text-[#1c140d]">{{ selectedPhotos.length }}개 선택됨</p>
@@ -116,7 +91,7 @@
           >
             <span class="material-symbols-outlined">share</span>
           </button>
-          <button
+          <button 
             @click="deleteSelectedPhotos"
             class="flex items-center justify-center p-3 rounded-full bg-red-100 text-red-600 active:scale-95 transition-transform"
             :disabled="selectedPhotos.length === 0"
@@ -126,33 +101,21 @@
         </div>
       </div>
     </div>
-
+    
     <!-- 업로드 버튼 (편집 모드가 아닐 때만 표시) -->
-    <button
-      v-if="!isSelectionMode"
-      @click="triggerFileInput"
-      class="fixed bottom-6 right-6 w-14 h-14 bg-primary text-white rounded-full shadow-lg shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform z-30"
-    >
-      <span v-if="!isUploading" class="material-symbols-outlined text-3xl"
-        >add_photo_alternate</span
-      >
+    <button v-if="!isSelectionMode" @click="triggerFileInput" class="fixed bottom-6 right-6 w-14 h-14 bg-primary text-white rounded-full shadow-lg shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform z-30">
+      <span v-if="!isUploading" class="material-symbols-outlined text-3xl">add_photo_alternate</span>
       <span v-else class="material-symbols-outlined text-3xl animate-spin">progress_activity</span>
     </button>
-    <input
-      type="file"
-      ref="fileInput"
-      class="hidden"
-      accept="image/*"
-      multiple
-      @change="handleFileUpload"
-    />
+    <input type="file" ref="fileInput" class="hidden" accept="image/*" multiple @change="handleFileUpload" />
 
-    <ImagePreviewModal
+    <ImagePreviewModal 
       :is-open="showPreviewModal"
       :preview-urls="previewUrls"
       @close="handleUploadCancel"
       @confirm="handleUploadConfirm"
     />
+
   </div>
 </template>
 
@@ -175,15 +138,11 @@ const familyStore = useFamilyStore();
 const modalStore = useModalStore();
 const userStore = useUserStore();
 const albumStore = useAlbumStore();
-
-/** @type {import('vue').Ref<Array<Object>>} 모든 불러온 사진 저장 */
-const allPhotos = ref([]);
-/** @type {import('vue').Ref<Array<Object>>} 필터링되어 화면에 표시될 사진 저장 */
-const photos = ref([]);
-
+const allPhotos = ref([]); 
+const photos = ref([]); 
 const S3_BASE_URL = 'https://eeum-s3-bucket.s3.ap-northeast-2.amazonaws.com/';
 
-// 공통 업로드 로직 사용
+
 const {
   fileInput,
   previewUrls,
@@ -192,257 +151,204 @@ const {
   triggerFileInput,
   handleFileUpload,
   handleUploadConfirm,
-  handleUploadCancel,
+  handleUploadCancel
 } = usePhotoUpload(async () => {
-  // 성공 시 콜백
-  await fetchPhotos(true);
+    
+    await fetchPhotos(true);
 });
 
-/**
- * 날짜 필터 로컬 computed (라우터 쿼리와 동기화)
- */
 const filterDateLocal = computed({
-  get: () => route.query.date || '',
-  set: (val) => {
-    router.replace({
-      query: {
-        ...route.query,
-        date: val,
-      },
-    });
-  },
+    get: () => route.query.date || '',
+    set: (val) => {
+        router.replace({ 
+            query: { 
+                ...route.query, 
+                date: val 
+            } 
+        });
+    }
 });
 
-/**
- * 현재 앨범의 제목을 반환합니다.
- * @type {import('vue').ComputedRef<string>}
- */
+
 const albumTitle = computed(() => {
-  const uploader = route.query.uploader;
-  const groupName = familyStore.selectedFamily?.name || '우리 가족';
-  return uploader ? `${uploader}의 앨범` : `${groupName} 앨범`;
+    const uploader = route.query.uploader;
+    const groupName = familyStore.selectedFamily?.name || '우리 가족';
+    return uploader ? `${uploader}의 앨범` : `${groupName} 앨범`;
 });
 
-/**
- * 사용자가 앨범을 편집할 권한이 있는지 확인합니다.
- * (대표자이거나, 본인의 앨범인 경우)
- * @type {import('vue').ComputedRef<boolean>}
- */
 const canManage = computed(() => {
-  // 1. 대표자 확인
-  const isRep =
-    familyStore.families.find((f) => String(f.id) === String(route.params.familyId))?.owner ||
-    false;
-
-  // 2. 본인 앨범 확인
-  const currentUploaderFilter = route.query.uploader;
-  const myName = userStore.profile?.name;
-  const isMyAlbum = currentUploaderFilter && myName && currentUploaderFilter === myName;
-
-  return isRep || isMyAlbum;
+    
+    const isRep = familyStore.families.find(f => String(f.id) === String(route.params.familyId))?.owner || false;
+    
+    
+    const currentUploaderFilter = route.query.uploader;
+    const myName = userStore.profile?.name;
+    const isMyAlbum = currentUploaderFilter && myName && (currentUploaderFilter === myName);
+    
+    return isRep || isMyAlbum;
 });
 
-/**
- * 서버로부터 사진 목록을 가져옵니다.
- * @param {boolean} [forceRefresh=false] - 캐시를 무시하고 강제로 새로고침할지 여부
- */
 const fetchPhotos = async (forceRefresh = false) => {
-  // URL의 familyId와 store의 selectedFamily 동기화
-  if (
-    route.params.familyId &&
-    (!familyStore.selectedFamily ||
-      String(familyStore.selectedFamily.id) !== String(route.params.familyId))
-  ) {
-    familyStore.selectFamilyById(route.params.familyId);
-  }
-
-  if (!familyStore.selectedFamily) return;
-
-  const familyId = familyStore.selectedFamily.id;
-
-  // 즉시 표시를 위해 캐시된 데이터 먼저 시도
-  if (!forceRefresh) {
-    const cached = albumStore.getCachedPhotos(familyId);
-    if (cached) {
-      allPhotos.value = cached;
-      filterPhotos();
-
-      // 캐시가 충분히 최신인 경우(30초 미만) 백그라운드 호출 건너뜀
-      if (albumStore.isFresh(familyId, 30000)) {
-        return;
-      }
-    }
-  }
-
-  try {
-    const response = await getPhotos(familyId);
-    let data = [];
-    if (response.data && Array.isArray(response.data.data)) {
-      data = response.data.data;
-    } else if (Array.isArray(response.data)) {
-      data = response.data;
+    
+    if (route.params.familyId && (!familyStore.selectedFamily || String(familyStore.selectedFamily.id) !== String(route.params.familyId))) {
+        familyStore.selectFamilyById(route.params.familyId);
     }
 
-    // URL 처리 및 데이터 가공
-    const processedPhotos = data.map((photo) => {
-      let url = photo.storageUrl || photo.imageUrl;
-      if (url && !url.startsWith('http')) {
-        url = S3_BASE_URL + url;
-      }
-      return {
-        ...photo,
-        displayUrl: url,
-      };
-    });
+    if (!familyStore.selectedFamily) return;
+    
+    const familyId = familyStore.selectedFamily.id;
+    
+    
+    if (!forceRefresh) {
+        const cached = albumStore.getCachedPhotos(familyId);
+        if (cached) {
+            allPhotos.value = cached;
+            filterPhotos();
+            
+            
+            if (albumStore.isFresh(familyId, 30000)) {
+                return;
+            }
+        }
+    }
+    
+    try {
+        const response = await getPhotos(familyId);
+        let data = [];
+        if (response.data && Array.isArray(response.data.data)) {
+            data = response.data.data;
+        } else if (Array.isArray(response.data)) {
+            data = response.data;
+        }
 
-    // 최신순 정렬
-    processedPhotos.sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.created_at || a.takenAt || 0);
-      const dateB = new Date(b.createdAt || b.created_at || b.takenAt || 0);
-      return dateB - dateA;
-    });
+        
+        const processedPhotos = data.map(photo => {
+            let url = photo.storageUrl || photo.imageUrl;
+            if (url && !url.startsWith('http')) {
+                url = S3_BASE_URL + url;
+            }
+            return {
+                ...photo,
+                displayUrl: url
+            };
+        });
+        
+        
+        processedPhotos.sort((a, b) => {
+            const dateA = new Date(a.createdAt || a.created_at || a.takenAt || 0);
+            const dateB = new Date(b.createdAt || b.created_at || b.takenAt || 0);
+            return dateB - dateA;
+        });
 
-    // 처리된 사진 캐시 저장 및 상태 업데이트
-    albumStore.setCachedPhotos(familyId, processedPhotos);
-    allPhotos.value = processedPhotos;
-
-    filterPhotos(); // 초기 필터 적용
-  } catch (error) {
-    Logger.error('앨범 사진 조회 실패:', error);
-  }
+        
+        albumStore.setCachedPhotos(familyId, processedPhotos);
+        allPhotos.value = processedPhotos;
+        
+        filterPhotos(); 
+    } catch (error) {
+        Logger.error("앨범 사진 조회 실패:", error);
+    }
 };
 
-/**
- * 이미지 로드 오류 시 처리 핸들러
- * @param {Event} event - 오류 이벤트
- */
 const handleImageError = (event) => {
-  event.target.style.display = 'none';
+    
+    event.target.style.display = 'none';
 };
 
-/**
- * 현재 불러온 사진 목록에서 쿼리 조건(업로더, 날짜)에 따라 필터링을 적용합니다.
- */
 const filterPhotos = () => {
-  const uploader = route.query.uploader;
-  const date = route.query.date;
+    const uploader = route.query.uploader;
+    const date = route.query.date;
 
-  let filtered = allPhotos.value;
+    let filtered = allPhotos.value;
 
-  if (uploader) {
-    filtered = filtered.filter((p) => p.uploaderName === uploader);
-  }
+    if (uploader) {
+        filtered = filtered.filter(p => p.uploaderName === uploader);
+    }
 
-  if (date) {
-    filtered = filtered.filter((p) => {
-      const pDate = new Date(p.takenAt || p.taken_at || p.createdAt || p.created_at || 0)
-        .toISOString()
-        .split('T')[0];
-      return pDate === date;
-    });
-  }
+    if (date) {
+        filtered = filtered.filter(p => {
+             const pDate = new Date(p.takenAt || p.taken_at || p.createdAt || p.created_at ||0).toISOString().split('T')[0];
+             return pDate === date;
+        });
+    }
 
-  photos.value = filtered;
+    photos.value = filtered;
 };
 
-// 선택 상태
+
 const isSelectionMode = ref(false);
 const selectedPhotos = ref([]);
 
-/**
- * 편집(선택) 모드를 토글합니다.
- */
 const toggleSelectionMode = () => {
-  isSelectionMode.value = !isSelectionMode.value;
-  selectedPhotos.value = []; // 모드 전환 시 선택 초기화
+    isSelectionMode.value = !isSelectionMode.value;
+    selectedPhotos.value = []; 
 };
 
-/**
- * 사진의 선택 상태를 토글합니다.
- * @param {Object} photo - 선택/해제할 사진 객체
- */
 const togglePhotoSelection = (photo) => {
-  if (!isSelectionMode.value) return;
-
-  const id = photo.photoId || photo.id;
-  if (selectedPhotos.value.includes(id)) {
-    selectedPhotos.value = selectedPhotos.value.filter((pId) => pId !== id);
-  } else {
-    selectedPhotos.value.push(id);
-  }
+    if (!isSelectionMode.value) return; 
+    
+    const id = photo.photoId || photo.id;
+    if (selectedPhotos.value.includes(id)) {
+        selectedPhotos.value = selectedPhotos.value.filter(pId => pId !== id);
+    } else {
+        selectedPhotos.value.push(id);
+    }
 };
 
-/**
- * 사진 클릭 시 처리 핸들러
- * (편집 모드 시 선택 토글, 아닐 시 상세 페이지 이동)
- * @param {Object} photo - 클릭한 사진 객체
- */
 const handlePhotoClick = (photo) => {
-  if (isSelectionMode.value) {
-    togglePhotoSelection(photo);
-  } else {
-    // 현재 필터들을 컨텍스트로 함께 전달하며 상세 페이지 이동
-    router.push({
-      name: 'PhotoDetail',
-      params: { photoId: photo.photoId || photo.id },
-      query: {
-        ...route.query, // uploader, date 등 전달
-      },
-    });
-  }
+    if (isSelectionMode.value) {
+        togglePhotoSelection(photo);
+    } else {
+        
+        router.push({
+            name: 'PhotoDetail',
+            params: { photoId: photo.photoId || photo.id },
+            query: { 
+                ...route.query 
+            }
+        });
+    }
 };
 
-/**
- * 선택된 사진들을 서버에서 삭제합니다.
- */
 const deleteSelectedPhotos = async () => {
-  if (selectedPhotos.value.length === 0) return;
+    if (selectedPhotos.value.length === 0) return;
+    
+    const isConfirmed = await modalStore.openConfirm(`${selectedPhotos.value.length}장의 사진을 삭제하시겠습니까?`);
+    if (!isConfirmed) return;
 
-  const isConfirmed = await modalStore.openConfirm(
-    `${selectedPhotos.value.length}장의 사진을 삭제하시겠습니까?`,
-  );
-  if (!isConfirmed) return;
-
-  try {
-    // 모든 선택된 사진 병렬 삭제
-    await Promise.all(selectedPhotos.value.map((id) => deletePhoto(id)));
-
-    await modalStore.openAlert('사진이 삭제되었습니다.');
-
-    // 목록 새로고침
-    await fetchPhotos(true);
-
-    // 편집 모드 종료
-    toggleSelectionMode();
-  } catch (error) {
-    Logger.error('삭제 실패:', error);
-    await modalStore.openAlert('사진 삭제에 실패했습니다.');
-  }
+    try {
+        
+        await Promise.all(selectedPhotos.value.map(id => deletePhoto(id)));
+        
+        await modalStore.openAlert("사진이 삭제되었습니다.");
+        
+        
+        await fetchPhotos(true);
+        
+        
+        toggleSelectionMode();
+    } catch (error) {
+        Logger.error("삭제 실패:", error);
+        await modalStore.openAlert("사진 삭제에 실패했습니다.");
+    }
 };
 
 onMounted(() => {
-  if (familyStore.selectedFamily) {
-    fetchPhotos();
-  }
+    if (familyStore.selectedFamily) {
+        fetchPhotos();
+    }
 });
 
-watch(
-  () => familyStore.selectedFamily,
-  (newFamily) => {
+watch(() => familyStore.selectedFamily, (newFamily) => {
     if (newFamily) {
-      fetchPhotos();
+        fetchPhotos();
     }
-  },
-);
+});
 
-// 쿼리 변경 시 필터 다시 적용
-watch(
-  () => route.query,
-  () => {
+
+watch(() => route.query, () => {
     filterPhotos();
-  },
-  { deep: true },
-);
+}, { deep: true });
 </script>
 
 <style scoped>
@@ -473,5 +379,15 @@ watch(
   to {
     opacity: 1;
   }
+}
+
+
+.image-fade-in {
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 </style>

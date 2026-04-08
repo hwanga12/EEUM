@@ -17,8 +17,8 @@ class DeviceAuth:
     장치 보안 인증을 위한 유틸리티 클래스입니다.
     """
     
-    TOKEN_EXPIRY = 180  # 토큰 유효 기간 (3분)
-    TOKEN_LENGTH = 32   # 생성할 토큰의 비트 길이
+    TOKEN_EXPIRY = 180  
+    TOKEN_LENGTH = 32
     
     @staticmethod
     def generate_qr_token() -> str:
@@ -42,6 +42,7 @@ class DeviceAuth:
         secrets.compare_digest를 사용하여 타이밍 공격(Timing Attack)을 방지합니다.
         """
         provided_hash = DeviceAuth.hash_token(provided_token)
+        
         return secrets.compare_digest(provided_hash, stored_hash)
     
     @staticmethod
@@ -50,8 +51,8 @@ class DeviceAuth:
         return (time.time() - token_created_at) < DeviceAuth.TOKEN_EXPIRY
 
 
-# 메모리 기반 임시 토큰 저장소 (실제 운영 시 Redis 등을 통해 지속성 보장 권장)
-_qr_token_store = {}  # token -> {created_at, device_id, verified}
+
+_qr_token_store = {}  
 
 
 def create_qr_token() -> Tuple[str, float]:

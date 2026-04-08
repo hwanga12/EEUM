@@ -22,10 +22,8 @@
         </div>
       </div>
       <div class="mt-4 text-center relative flex justify-center items-center">
-        <span
-          class="absolute left-0 top-1/2 -translate-y-1/2 text-lg font-bold text-slate-900 select-none"
-        >
-          {{ headerYear }}년
+        <span class="absolute left-0 top-1/2 -translate-y-1/2 text-lg font-bold text-slate-900 select-none">
+            {{ headerYear }}년
         </span>
         <h1 class="text-2xl font-bold text-slate-900">{{ headerDateText }}</h1>
       </div>
@@ -74,64 +72,44 @@
 
     <!-- 모달 오버레이: 안전성을 위한 래퍼 스크롤 패턴 -->
     <div class="fixed inset-0 z-[60] overflow-y-auto" v-if="true">
-      <div class="flex min-h-full items-end justify-center">
-        <!-- items-end를 사용하여 하단 시트처럼 배치 -->
-        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" @click="$router.back()"></div>
-        <!-- 카드 뒤에 고정된 배경 -->
-
-        <!-- 카드: 뷰포트 수축으로부터 안전한 자연스러운 높이 -->
-        <div
+      <div class="flex min-h-full items-end justify-center"> <!-- items-end positions it at bottom like a sheet -->
+        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" @click="$router.back()"></div> <!-- Backdrop fixed behind card -->
+        
+        <!-- Card: Natural height, safe from viewport shrinking -->
+        <div 
           ref="sheet"
           class="relative w-full bg-white shadow-2xl rounded-t-[2.5rem] z-10 overflow-hidden transition-transform duration-300 ease-out"
           :class="{ 'animate-slide-up': !isDragging }"
           :style="sheetStyle"
         >
-          <div
-            class="flex justify-center pt-4 pb-2 cursor-grab active:cursor-grabbing touch-none"
-            @touchstart="onTouchStart"
-            @touchmove="onTouchMove"
-            @touchend="onTouchEnd"
-          >
-            <div class="w-12 h-1.5 bg-slate-300 rounded-full"></div>
-          </div>
-          <div class="px-6 pb-12 pt-4">
-            <header class="relative flex items-center justify-center mb-8">
-              <button
-                @click="$router.back()"
-                class="absolute left-0 p-2 rounded-full hover:bg-slate-100 transition-colors"
-              >
-                <svg
-                  class="w-6 h-6 text-slate-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-              <h2 class="text-2xl font-bold text-slate-900">{{ pageTitle }}</h2>
-            </header>
-            <form class="space-y-8" @submit.prevent="submitForm">
-              <div class="space-y-2">
-                <label class="text-base font-semibold text-slate-700 ml-1">제목</label>
-                <input
-                  v-model="formData.title"
-                  class="w-full bg-white border-none rounded-2xl p-4 text-lg ios-shadow focus:ring-2 focus:ring-primary/50 text-slate-900 placeholder:text-slate-400"
-                  placeholder="일정 제목을 입력하세요"
-                  type="text"
-                />
-              </div>
-
-              <div class="space-y-3">
-                <label class="text-base font-semibold text-slate-700 ml-1">일정 구분</label>
-                <div class="flex flex-wrap gap-2">
-                  <button
-                    v-for="cat in categories"
+        <div 
+          class="flex justify-center pt-4 pb-2 cursor-grab active:cursor-grabbing touch-none"
+          @touchstart="onTouchStart"
+          @touchmove="onTouchMove"
+          @touchend="onTouchEnd"
+        >
+          <div class="w-12 h-1.5 bg-slate-300 rounded-full"></div>
+        </div>
+        <div class="px-6 pb-12 pt-4">
+          <header class="relative flex items-center justify-center mb-8">
+            <button @click="$router.back()" class="absolute left-0 p-2 rounded-full hover:bg-slate-100 transition-colors">
+              <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h2 class="text-2xl font-bold text-slate-900">{{ pageTitle }}</h2>
+          </header>
+          <form class="space-y-8" @submit.prevent="submitForm">
+            <div class="space-y-2">
+              <label class="text-base font-semibold text-slate-700 ml-1">제목</label>
+              <input v-model="formData.title" class="w-full bg-white border-none rounded-2xl p-4 text-lg ios-shadow focus:ring-2 focus:ring-primary/50 text-slate-900 placeholder:text-slate-400" placeholder="일정 제목을 입력하세요" type="text"/>
+            </div>
+            
+            <div class="space-y-3">
+              <label class="text-base font-semibold text-slate-700 ml-1">일정 구분</label>
+              <div class="flex flex-wrap gap-2">
+                <button 
+                    v-for="cat in categories" 
                     :key="cat.value"
                     @click="selectCategory(cat.value)"
                     :class="[
@@ -255,9 +233,77 @@
                   저장하기
                 </button>
               </div>
-            </form>
-          </div>
-          <div class="h-8"></div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4">
+              <div class="bg-white p-4 rounded-2xl ios-shadow space-y-4">
+                <div class="flex items-center gap-3">
+                  <span class="text-slate-500 font-bold text-[11px] w-8 shrink-0">시작</span>
+                  <div class="flex gap-2 items-center flex-1">
+                    <EeumDatePicker 
+                      v-model="formData.startAtDate" 
+                      class="flex-[1.4] min-w-[130px]"
+                      is-range
+                      :start-date="formData.startAtDate"
+                      :end-date="formData.endAtDate"
+                      @update:start-date="val => formData.startAtDate = val"
+                      @update:end-date="val => formData.endAtDate = val"
+                    />
+                    <input v-model="formData.startAtTime" type="time" class="eeum-input !min-h-0 !h-11 !py-0 text-[12px] font-bold !px-2 flex-1 min-w-[80px]" />
+                  </div>
+                </div>
+                <div class="h-px bg-slate-100 ms-11"></div>
+                <div class="flex items-center gap-3">
+                  <span class="text-slate-500 font-bold text-[11px] w-8 shrink-0">종료</span>
+                  <div class="flex gap-2 items-center flex-1">
+                    <EeumDatePicker 
+                      v-model="formData.endAtDate" 
+                      class="flex-[1.4] min-w-[130px]"
+                      is-range
+                      :start-date="formData.startAtDate"
+                      :end-date="formData.endAtDate"
+                      @update:start-date="val => formData.startAtDate = val"
+                      @update:end-date="val => formData.endAtDate = val"
+                    />
+                    <input v-model="formData.endAtTime" type="time" class="eeum-input !min-h-0 !h-11 !py-0 text-[12px] font-bold !px-2 flex-1 min-w-[80px]" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recurrence Option -->
+             <div class="space-y-2">
+               <label class="flex items-center gap-2 text-base font-semibold text-slate-700 ml-1">
+                 <input type="checkbox" v-model="formData.repeatType" true-value="YEARLY" false-value="NONE" class="w-5 h-5 rounded text-primary focus:ring-primary">
+                 <span>매년 반복</span>
+               </label>
+               <div v-if="isRepeatingYearly" class="ml-1 mt-2">
+                  <label class="text-xs text-slate-500 block mb-1">반복 종료일</label>
+                  <EeumDatePicker v-model="formData.recurrenceEndAt" placeholder="종료일 선택" />
+               </div>
+            </div>
+
+            <!-- Visit Info (conditional based on category) -->
+            <div v-if="formData.categoryType === 'VISIT'" class="space-y-4 pt-2">
+                <div class="space-y-2">
+                    <label class="text-base font-semibold text-slate-700 ml-1">방문자 이름</label>
+                    <input v-model="formData.visitorName" type="text" class="w-full bg-white border-none rounded-2xl p-4 text-sm ios-shadow" placeholder="누가 방문하나요?">
+                </div>
+                 <div class="space-y-2">
+                    <label class="text-base font-semibold text-slate-700 ml-1">방문 목적</label>
+                    <input v-model="formData.visitPurpose" type="text" class="w-full bg-white border-none rounded-2xl p-4 text-sm ios-shadow" placeholder="방문 목적이 무엇인가요?">
+                </div>
+            </div>
+
+            <div class="space-y-2">
+              <label class="text-base font-semibold text-slate-700 ml-1">메모</label>
+              <textarea v-model="formData.description" class="w-full bg-white border-none rounded-2xl p-4 text-base ios-shadow focus:ring-2 focus:ring-primary/50 text-slate-900 placeholder:text-slate-400 resize-none" placeholder="상세 내용을 입력하세요" rows="4"></textarea>
+            </div>
+            <div class="flex gap-3 pt-4">
+              <button @click="$router.back()" class="flex-1 py-4 rounded-2xl bg-slate-100 text-slate-600 font-bold text-lg" type="button">취소</button>
+              <button type="submit" class="flex-[2] py-4 rounded-2xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/20">저장하기</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -279,60 +325,49 @@ const route = useRoute();
 const familyStore = useFamilyStore();
 const modalStore = useModalStore();
 
-// Drag to Close Logic
+
 const sheet = ref(null);
 const touchStartY = ref(0);
 const touchCurrentY = ref(0);
 const isDragging = ref(false);
 
-/** @type {import('vue').ComputedRef<Object>} Sheet의 드래그 스타일 */
 const sheetStyle = computed(() => {
   if (!isDragging.value) return {};
   const translateY = Math.max(0, touchCurrentY.value - touchStartY.value);
-  return {
-    transform: `translateY(${translateY}px)`,
-    transition: 'none',
+  return { 
+      transform: `translateY(${translateY}px)`, 
+      transition: 'none' 
   };
 });
 
-/**
- * 터치 시작 핸들러
- * @param {TouchEvent} e
- */
 const onTouchStart = (e) => {
   touchStartY.value = e.touches[0].clientY;
-  touchCurrentY.value = e.touches[0].clientY;
+  touchCurrentY.value = e.touches[0].clientY; 
   isDragging.value = true;
 };
 
-/**
- * 터치 이동 핸들러
- * @param {TouchEvent} e
- */
 const onTouchMove = (e) => {
   if (!isDragging.value) return;
   touchCurrentY.value = e.touches[0].clientY;
+  
+  
 };
 
-/**
- * 터치 종료 핸들러
- */
 const onTouchEnd = () => {
   if (!isDragging.value) return;
-
+  
   const diff = touchCurrentY.value - touchStartY.value;
   isDragging.value = false;
-
-  if (diff > 100) {
-    // 100px 이상 드래그 시 닫기
+  
+  if (diff > 100) { 
     router.back();
   } else {
+    
     touchStartY.value = 0;
     touchCurrentY.value = 0;
   }
 };
 
-/** @type {import('vue').ComputedRef<boolean>} 수정 모드 여부 */
 const isEditMode = computed(() => !!route.query.id);
 /** @type {import('vue').ComputedRef<string>} 페이지 제목 */
 const pageTitle = computed(() => (isEditMode.value ? '일정 수정' : '일정 추가'));
@@ -351,69 +386,88 @@ const headerYear = computed(() => {
   return y;
 });
 
+const headerDateText = computed(() => {
+    if (!formData.value.startAtDate) return '';
+    const [y, m] = formData.value.startAtDate.split('-');
+    return `${parseInt(m)}월`;
+});
+
+const headerYear = computed(() => {
+    if (!formData.value.startAtDate) return '';
+    const [y, m] = formData.value.startAtDate.split('-');
+    return y;
+});
+
 const formData = ref({
-  title: '',
-  categoryType: 'VISIT', // Default
-  startAtDate: new Date().toISOString().split('T')[0],
-  startAtTime: '12:00',
-  endAtDate: new Date().toISOString().split('T')[0],
-  endAtTime: '13:00',
-  description: '',
-  repeatType: 'NONE',
-  recurrenceEndAt: '',
-  isLunar: false,
-  targetPerson: '',
-  visitPurpose: '',
-  visitorName: '',
+    title: '',
+    categoryType: 'VISIT', 
+    startAtDate: new Date().toISOString().split('T')[0],
+    startAtTime: '12:00',
+    endAtDate: new Date().toISOString().split('T')[0],
+    endAtTime: '13:00',
+    description: '',
+    repeatType: 'NONE',
+    recurrenceEndAt: '',
+    isLunar: false,
+    targetPerson: '',
+    visitPurpose: '',
+    visitorName: ''
 });
 
 onMounted(async () => {
-  if (!familyStore.selectedFamily) {
-    await familyStore.fetchFamilies();
-  }
+    if (!familyStore.selectedFamily) {
 
-  // 수정 모드: 기존 데이터 가져오기
-  if (isEditMode.value) {
-    try {
-      const scheduleId = route.query.id;
-      const data = await scheduleService.getSchedule(familyStore.selectedFamily.id, scheduleId);
+        await familyStore.fetchFamilies();
+    }
 
-      // 폼 데이터 채우기
-      formData.value.title = data.title;
-      formData.value.categoryType = data.categoryType;
-      formData.value.description = data.description;
-      formData.value.repeatType = data.repeatType;
-      formData.value.recurrenceEndAt = data.recurrenceEndAt;
-      formData.value.visitorName = data.visitorName;
-      formData.value.visitPurpose = data.visitPurpose;
-      formData.value.isLunar = !!data.isLunar;
 
-      if (data.startAt) {
+    
+    if (isEditMode.value) {
         try {
-          const parts = data.startAt.split('T');
-          if (parts.length > 1) {
-            formData.value.startAtDate = parts[0];
-            formData.value.startAtTime = parts[1].substring(0, 5);
-          }
-        } catch (e) {
-          Logger.error('startAt 파싱 오류', e);
+            const scheduleId = route.query.id;
+            const data = await scheduleService.getSchedule(familyStore.selectedFamily.id, scheduleId);
+            
+            
+            formData.value.title = data.title;
+            formData.value.categoryType = data.categoryType;
+            formData.value.description = data.description;
+            formData.value.repeatType = data.repeatType;
+            formData.value.recurrenceEndAt = data.recurrenceEndAt;
+            formData.value.visitorName = data.visitorName;
+            formData.value.visitPurpose = data.visitPurpose;
+            formData.value.isLunar = !!data.isLunar;
+
+            if (data.startAt) {
+                try {
+                    const parts = data.startAt.split('T');
+                    if (parts.length > 1) {
+                         formData.value.startAtDate = parts[0];
+                         formData.value.startAtTime = parts[1].substring(0, 5);
+                    }
+                } catch (e) {
+                    Logger.error("startAt 파싱 오류", e);
+                }
+            }
+            if (data.endAt) {
+                try {
+                     const parts = data.endAt.split('T');
+                     if (parts.length > 1) {
+                        formData.value.endAtDate = parts[0];
+                        formData.value.endAtTime = parts[1].substring(0, 5);
+                     }
+                } catch (e) {
+                    Logger.error("endAt 파싱 오류", e);
+                }
+            }
+        } catch (error) {
+            Logger.error("일정 수정 데이터 로드 실패", error);
+            await modalStore.openAlert("일정 정보를 불러오는데 실패했습니다.");
+            router.back();
         }
-      }
-      if (data.endAt) {
-        try {
-          const parts = data.endAt.split('T');
-          if (parts.length > 1) {
-            formData.value.endAtDate = parts[0];
-            formData.value.endAtTime = parts[1].substring(0, 5);
-          }
-        } catch (e) {
-          Logger.error('endAt 파싱 오류', e);
-        }
-      }
-    } catch (error) {
-      Logger.error('일정 수정 데이터 로드 실패', error);
-      await modalStore.openAlert('일정 정보를 불러오는데 실패했습니다.');
-      router.back();
+    } else if (route.query.date) {
+        
+        formData.value.startAtDate = route.query.date;
+        formData.value.endAtDate = route.query.date;
     }
   } else if (route.query.date) {
     // 특정 날짜가 지정된 생성 모드
@@ -422,13 +476,10 @@ onMounted(async () => {
   }
 });
 
-// 시작일 변경 시 종료일 동기화 (생성 모드일 때만)
-watch(
-  () => formData.value.startAtDate,
-  (newVal) => {
-    if (!isEditMode.value) {
-      // 기존 종료일을 덮어쓰지 않도록 생성 모드에서만 동기화
-      formData.value.endAtDate = newVal;
+
+watch(() => formData.value.startAtDate, (newVal) => {
+    if (!isEditMode.value) { 
+        formData.value.endAtDate = newVal;
     }
   },
 );
@@ -459,38 +510,43 @@ const selectCategory = (type) => {
  * 폼 데이터를 제출하여 일정을 저장하거나 수정합니다.
  */
 const submitForm = async () => {
-  const targetFamilyId = route.params.familyId || familyStore.selectedFamily?.id;
 
-  if (!targetFamilyId) {
-    Logger.error('선택된 가족 없음');
-    await modalStore.openAlert('가족 정보가 없습니다. 다시 시도해주세요.');
-    return;
-  }
+    const targetFamilyId = route.params.familyId || familyStore.selectedFamily?.id;
 
-  try {
-    const payload = {
-      ...formData.value,
-      categoryType: formData.value.categoryType || 'VISIT',
-      startAt: `${formData.value.startAtDate}T${formData.value.startAtTime}:00`,
-      endAt: `${formData.value.endAtDate}T${formData.value.endAtTime}:00`,
-      isLunar: formData.value.isLunar ? 1 : 0,
-      recurrenceEndAt: formData.value.recurrenceEndAt || null,
-      targetPerson: formData.value.targetPerson || null,
-      visitPurpose: formData.value.visitPurpose || null,
-      visitorName: formData.value.visitorName || null,
-    };
-
-    if (isEditMode.value) {
-      await scheduleService.updateSchedule(targetFamilyId, route.query.id, payload);
-    } else {
-      await scheduleService.createSchedule(targetFamilyId, payload);
+    if (!targetFamilyId) {
+        Logger.error("선택된 가족 없음");
+        await modalStore.openAlert("가족 정보가 없습니다. 다시 시도해주세요.");
+        return;
     }
 
-    router.back();
-  } catch (error) {
-    Logger.error('일정 저장 실패', error);
-    await modalStore.openAlert('일정 저장에 실패했습니다.');
-  }
+    try {
+        const payload = {
+            ...formData.value,
+            
+            categoryType: formData.value.categoryType || 'VISIT',
+            startAt: `${formData.value.startAtDate}T${formData.value.startAtTime}:00`,
+            endAt: `${formData.value.endAtDate}T${formData.value.endAtTime}:00`,
+            isLunar: formData.value.isLunar ? 1 : 0, 
+            recurrenceEndAt: formData.value.recurrenceEndAt || null, 
+            targetPerson: formData.value.targetPerson || null,
+            visitPurpose: formData.value.visitPurpose || null,
+            visitorName: formData.value.visitorName || null
+        };
+
+        
+        if (isEditMode.value) {
+             await scheduleService.updateSchedule(targetFamilyId, route.query.id, payload);
+
+        } else {
+             await scheduleService.createSchedule(targetFamilyId, payload);
+
+        }
+
+        router.back();
+    } catch (error) {
+        Logger.error("일정 저장 실패", error);
+        await modalStore.openAlert('일정 저장에 실패했습니다.');
+    }
 };
 </script>
 

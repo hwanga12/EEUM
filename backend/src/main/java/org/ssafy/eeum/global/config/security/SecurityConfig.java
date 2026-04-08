@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
@@ -25,11 +24,6 @@ import org.ssafy.eeum.global.auth.oauth2.CustomOAuth2UserService;
 
 import java.util.List;
 
-/**
- * 애플리케이션의 전반적인 보안 정책(인증, 인가, CORS 등)을 설정하는 핵심 구성 클래스입니다.
- * 
- * @summary Spring Security 설정 클래스
- */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -39,26 +33,12 @@ public class SecurityConfig {
         private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
         private final JwtProvider jwtProvider;
 
-        @Value("${app.cors.allowed-origins}")
-        private List<String> allowedOrigins;
-
-        /**
-         * 비밀번호 암호화를 위한 BCryptPasswordEncoder를 빈으로 등록합니다.
-         * 
-         * @summary PasswordEncoder Bean 생성
-         * @return BCryptPasswordEncoder 객체
-         */
         @Bean
         public PasswordEncoder passwordEncoder() {
                 return new BCryptPasswordEncoder();
         }
 
-        /**
-         * 정적 리소스(Swagger UI, Favicon 등)에 대해 보안 필터링을 제외하도록 설정합니다.
-         * 
-         * @summary 웹 보안 무시 경로 설정
-         * @return WebSecurityCustomizer 객체
-         */
+        
         @Bean
         public WebSecurityCustomizer webSecurityCustomizer() {
                 return (web) -> web.ignoring().requestMatchers(
@@ -70,14 +50,6 @@ public class SecurityConfig {
                                 "/favicon.ico");
         }
 
-        /**
-         * HTTP 보안 정책(인증 경로, 필터 순서, 예외 처리 등)을 정의합니다.
-         * 
-         * @summary SecurityFilterChain 구성
-         * @param http HttpSecurity 객체
-         * @return 구성된 SecurityFilterChain 객체
-         * @throws Exception 보안 설정 중 오류 발생 시
-         */
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
                 http
@@ -89,13 +61,13 @@ public class SecurityConfig {
                                                 .requestMatchers("/", "/api/auth/**", "/login/**", "/oauth2/**",
                                                                 "/api/ws/**")
                                                 .permitAll()
-                                                // IoT 인증 API - 토큰 불필요
+                                                
                                                 .requestMatchers("/api/iot/auth/**")
                                                 .permitAll()
-                                                // 보이스 웹후크 - 토큰 불필요
+                                                
                                                 .requestMatchers("/api/voice/webhook/**")
                                                 .permitAll()
-                                                // IoT 기기 전용 API - ROLE_DEVICE 필수
+                                                
                                                 .requestMatchers("/api/iot/device/**")
                                                 .hasRole("DEVICE")
                                                 .anyRequest().authenticated())
@@ -115,16 +87,18 @@ public class SecurityConfig {
                 return http.build();
         }
 
-        /**
-         * CORS(Cross-Origin Resource Sharing) 관련 정책을 설정합니다.
-         * 
-         * @summary CORS 설정 정보 생성
-         * @return CorsConfigurationSource 객체
-         */
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOriginPatterns(allowedOrigins);
+                config.setAllowedOriginPatterns(List.of(
+                                "http://localhost:*",
+                                "http://127.0.0.1:*",
+                                "http://10.0.2.2:*",
+                                "http://192.168.*:*",
+                                "http://70.12.*:*",
+                                "https://192.168.*:*",
+                                "https://i14a105.p.ssafy.io:*",
+                                "https://i14a105.p.ssafy.io"));
                 config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
                 config.setAllowedHeaders(List.of("*"));
                 config.setAllowCredentials(true);

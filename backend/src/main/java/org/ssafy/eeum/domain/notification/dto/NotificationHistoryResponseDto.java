@@ -1,13 +1,9 @@
 package org.ssafy.eeum.domain.notification.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
-import lombok.Data;
 
-import java.time.LocalDateTime;
-
-@Data
-@Builder
+@lombok.Data
+@lombok.Builder
 public class NotificationHistoryResponseDto {
     private Long id;
     private String title;
@@ -15,7 +11,7 @@ public class NotificationHistoryResponseDto {
     private String type;
     @JsonProperty("related_id")
     private Integer relatedId;
-    private LocalDateTime createdAt;
+    private java.time.LocalDateTime createdAt;
     private boolean isRead;
 
     private String videoUrl;

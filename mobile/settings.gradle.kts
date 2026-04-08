@@ -23,8 +23,6 @@ dependencyResolutionManagement {
 
 // 프로젝트 이름 설정
 rootProject.name = "eeum"
-
-// 모듈 포함 설정
-include(":app")  // 모바일 앱 모듈
-include(":wear") // Wear OS 모듈
+include(":app")
+include(":wear")
  

@@ -6,7 +6,6 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.ssafy.eeum.domain.auth.entity.User;
 import org.ssafy.eeum.domain.family.entity.Family;
-import org.ssafy.eeum.domain.voice.entity.VoiceTask;
 
 import java.time.LocalDateTime;
 
@@ -58,7 +57,7 @@ public class Message {
 
     @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "voice_task_id")
-    private VoiceTask voiceTask;
+    private org.ssafy.eeum.domain.voice.entity.VoiceTask voiceTask;
 
     public void markRead() {
         this.isRead = true;
@@ -74,7 +73,7 @@ public class Message {
         this.isSynced = false;
     }
 
-    public void updateVoiceTask(VoiceTask voiceTask) {
+    public void updateVoiceTask(org.ssafy.eeum.domain.voice.entity.VoiceTask voiceTask) {
         this.voiceTask = voiceTask;
     }
 }

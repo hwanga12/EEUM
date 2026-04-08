@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import org.ssafy.eeum.global.common.model.BaseEntity;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,8 +51,7 @@ public class MedicationPlan extends BaseEntity {
     private List<MedicationPlanTime> medicationPlanTimes = new ArrayList<>();
 
     @Builder
-    public MedicationPlan(Long groupId, String medicineName, CycleType cycleType, int totalDosesDay, String cycleValue,
-            int daysOfWeek, LocalDate startDate, LocalDate endDate) {
+    public MedicationPlan(Long groupId, String medicineName, CycleType cycleType, int totalDosesDay, String cycleValue, int daysOfWeek, LocalDate startDate, LocalDate endDate) {
         this.groupId = groupId;
         this.medicineName = medicineName;
         this.cycleType = cycleType;
@@ -69,15 +67,14 @@ public class MedicationPlan extends BaseEntity {
         medicationPlanTime.setMedicationPlan(this);
     }
 
-    public void addNotificationTime(LocalTime time) {
+    public void addNotificationTime(java.time.LocalTime time) {
         MedicationPlanTime planTime = MedicationPlanTime.builder()
                 .notificationTime(time)
                 .build();
         addMedicationPlanTime(planTime);
     }
 
-    public void update(String medicineName, CycleType cycleType, String cycleValue, int daysOfWeek, int totalDosesDay,
-            LocalDate startDate, LocalDate endDate) {
+    public void update(String medicineName, CycleType cycleType, String cycleValue, int daysOfWeek, int totalDosesDay, LocalDate startDate, LocalDate endDate) {
         this.medicineName = medicineName;
         this.cycleType = cycleType;
         this.cycleValue = cycleValue;
@@ -86,8 +83,8 @@ public class MedicationPlan extends BaseEntity {
         this.startDate = startDate;
         this.endDate = endDate;
     }
-
-    public List<MedicationPlanTime> getNotificationTimes() {
+    
+    public List<org.ssafy.eeum.domain.medication.entity.MedicationPlanTime> getNotificationTimes() {
         return this.medicationPlanTimes;
     }
 }

@@ -15,7 +15,7 @@ from typing import Optional, Union
 from ultralytics import YOLO
 import torch
 
-# 로깅 설정: 내보내기 진행 상황을 가독성 있게 출력합니다.
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -31,24 +31,24 @@ def setup_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     
-    # 기본 모델 경로 및 이미지 크기 설정
-    parser.add_argument("--model", type=str, default="yolov8n-pose.pt", help="소스 PyTorch 모델 경로 (.pt)")
-    parser.add_argument("--imgsz", type=int, default=640, help="모델 입력 이미지 크기 (정사각형)")
     
-    # 최적화 관련 세부 파라미터
-    parser.add_argument("--device", type=str, default="0", help="GPU 장치 인덱스 (기본: 0)")
-    parser.add_argument("--half", action="store_true", default=True, help="FP16(반정밀도) 연산 활성화 (성능 향상)")
-    parser.add_argument("--int8", action="store_true", help="INT8(저정밀도) 양자화 시도 (별도 캘리브레이션 데이터셋 필요)")
-    parser.add_argument("--workspace", type=int, default=4, help="TensorRT 컴파일 시 할당할 최대 비디오 메모리(GB)")
-    parser.add_argument("--opset", type=int, default=None, help="ONNX opset 버전 지정")
-    parser.add_argument("--simplify", action="store_true", default=True, help="ONNX 그래프 구조 단순화 활성화")
+    parser.add_argument("--model", type=str, default="yolov8n-pose.pt", help="PyTorch 모델 경로 (.pt)")
+    parser.add_argument("--imgsz", type=int, default=640, help="이미지 크기 (픽셀)")
     
-    # 변환 후행 처리 및 검증
-    parser.add_argument("--verify", action="store_true", help="변환 완료 후 엔진의 로드 및 추론 테스트를 수행합니다.")
-    parser.add_argument("--test-image", type=str, help="검증 시 사용할 테스트 이미지 경로")
     
-    # 하위 호환성용 플래그
-    parser.add_argument("--fp32", action="store_true", help="FP16을 사용하지 않고 원래 정밀도(FP32)로 유지합니다.")
+    parser.add_argument("--device", type=str, default="0", help="GPU 장치 인덱스 또는 'cpu'")
+    parser.add_argument("--half", action="store_true", default=True, help="FP16 양자화 사용")
+    parser.add_argument("--int8", action="store_true", help="INT8 양자화 사용 (캘리브레이션 필요)")
+    parser.add_argument("--workspace", type=int, default=4, help="TensorRT 워크스페이스 크기 (GB)")
+    parser.add_argument("--opset", type=int, default=None, help="ONNX opset 버전")
+    parser.add_argument("--simplify", action="store_true", default=True, help="ONNX 모델 단순화")
+    
+    
+    parser.add_argument("--verify", action="store_true", help="내보내기 후 엔진 검증")
+    parser.add_argument("--test-image", type=str, help="추론 테스트를 위한 선택적 이미지 경로")
+    
+    
+    parser.add_argument("--fp32", action="store_true", help="FP16 비활성화 (FP32 사용)")
     
     return parser.parse_args()
 
@@ -74,7 +74,7 @@ def export_to_tensorrt(
     logger.info(f"🚀 TensorRT 변환 프로세스를 시작합니다: {model_path.name}")
     logger.info(f"⚙️ 설정 요약: 해상도={imgsz}, 정밀도={'INT8' if int8 else 'FP16' if half else 'FP32'}")
 
-    # CUDA 환경 점검
+    
     if device != 'cpu' and not torch.cuda.is_available():
         logger.warning("CUDA 가속을 사용할 수 없습니다. 일반 CPU에서 내보내기를 시도합니다.")
         device = 'cpu'
@@ -83,7 +83,9 @@ def export_to_tensorrt(
     try:
         model = YOLO(str(model_path))
         
-        # Ultralytics 내보내기 엔진 호출
+        
+        
+        
         engine_path_str = model.export(
             format="engine",
             imgsz=imgsz,
@@ -93,13 +95,13 @@ def export_to_tensorrt(
             workspace=workspace,
             opset=opset,
             simplify=simplify,
-            verbose=False
+            verbose=False 
         )
         
         engine_path = Path(engine_path_str)
         elapsed = time.time() - start_time
         
-        # 최적화 결과 정보 요약 출력
+        
         print(f"\n{'='*70}")
         logger.info(f"✅ 최적화 엔진 생성이 완료되었습니다! (소요 시간: {elapsed:.1f}초)")
         print(f"{'='*70}")
@@ -128,7 +130,7 @@ def verify_engine(engine_path: Union[str, Path], test_image: Optional[str] = Non
     logger.info(f"🔍 생성된 엔진 검증 중...")
     
     try:
-        # 엔진 로드 테스트
+        
         model = YOLO(str(engine_path), task='pose')
         logger.info("  - 엔진 파일 로드 성공")
         
@@ -150,6 +152,7 @@ def verify_engine(engine_path: Union[str, Path], test_image: Optional[str] = Non
 
 def main():
     args = setup_args()
+    
     
     if args.fp32:
         args.half = False
@@ -173,6 +176,7 @@ def main():
         logger.info("\n사용자에 의해 강제 종료되었습니다.")
         return 1
     except Exception:
+        
         return 1
         
     return 0

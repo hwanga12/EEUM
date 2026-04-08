@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.ssafy.eeum.domain.auth.entity.User;
-import org.ssafy.eeum.domain.auth.repository.UserRepository;
 import org.ssafy.eeum.domain.voice.dto.PythonTtsRequestDTO;
 import org.ssafy.eeum.domain.voice.dto.VoiceTaskStatusResponseDTO;
 import org.ssafy.eeum.domain.voice.dto.VoiceSampleRequestDTO;
@@ -34,7 +33,7 @@ public class VoiceService {
     private final VoiceScriptRepository scriptRepository;
     private final VoiceSampleRepository sampleRepository;
     private final VoiceTaskRepository taskRepository;
-    private final UserRepository userRepository; // Inject UserRepository
+    private final org.ssafy.eeum.domain.auth.repository.UserRepository userRepository; 
     private final S3Service s3Service;
     private final VoiceAiClient voiceAiClient;
 
@@ -45,7 +44,7 @@ public class VoiceService {
             "묻고 더블로 가!",
             "어이가 없네.");
 
-    // 대본 목록 조회
+    
     public List<VoiceScript> getScripts() {
         return scriptRepository.findAll();
     }
@@ -261,9 +260,7 @@ public class VoiceService {
         log.debug("사용자 {}의 목소리 모델 및 대표 샘플을 조회합니다.", userId);
 
         PythonTtsRequestDTO requestDto = buildPythonTtsRequestDTO(userId, text);
-
-        // 중복 경로 방지를 위해 헬퍼 메서드 사용
-        String webhookUrl = buildWebhookUrl("/tts") + "?messageId=" + messageId;
+        String webhookUrl = webhookBaseUrl + "/tts?messageId=" + messageId;
 
         String audioUrl = voiceAiClient.generateTts(requestDto, webhookUrl);
         if (audioUrl == null) {
@@ -332,7 +329,7 @@ public class VoiceService {
 
             if (statusOrUrl == null || "FAILED".equals(statusOrUrl) || "ERROR".equals(statusOrUrl)) {
                 log.error("[TTS Sync Test] 음성 생성 응답 대기/실패 (상태: {})", statusOrUrl);
-                // 일시적 에러(null, ERROR) 및 진짜 실패(FAILED) 상황
+                
                 if ("FAILED".equals(statusOrUrl)) {
                     if (task != null) {
                         task.fail(VoiceTask.TaskStatus.FAILED);
@@ -340,7 +337,7 @@ public class VoiceService {
                     }
                     throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
                 }
-                // null이나 ERROR는 통신 장애일 가능성이 높으므로 실패 처리하지 않고 계속 진행 (continue)
+                
                 continue;
             }
 
@@ -365,38 +362,12 @@ public class VoiceService {
     }
 
     public String generateTtsAsync(Integer userId, String text) {
-        log.info("[TTS 비동기 테스트] 사용자 {}의 TTS 비동기 생성 요청 (텍스트: {})", userId, text);
+        log.info("[TTS Async Test] 사용자 {}의 TTS 비동기 생성 요청 (텍스트: {})", userId, text);
 
         PythonTtsRequestDTO requestDto = buildPythonTtsRequestDTO(userId, text);
 
-        // 테스트용 웹후크 주소 생성 (중복 방지)
-        String webhookUrl = buildWebhookUrl("/test");
+        String webhookUrl = webhookBaseUrl + "/test";
         return voiceAiClient.generateTts(requestDto, webhookUrl);
-    }
-
-    /**
-     * 설정된 베이스 URL과 접미사를 조합하여 중복 없이 웹후크 URL을 생성합니다.
-     */
-    private String buildWebhookUrl(String suffix) {
-        if (webhookBaseUrl == null) {
-            return suffix;
-        }
-
-        String baseUrl = webhookBaseUrl.trim();
-        // 설정값이 접미사로 끝나면 중복 방지를 위해 제거
-        if (baseUrl.endsWith(suffix)) {
-            baseUrl = baseUrl.substring(0, baseUrl.length() - suffix.length());
-        } else if (baseUrl.endsWith("/tts") && "/test".equals(suffix)) {
-            // /tts로 설정되어 있는데 /test가 필요한 경우 /tts 제거
-            baseUrl = baseUrl.substring(0, baseUrl.length() - 4);
-        }
-
-        // 마지막이 /로 끝나면 제거 (합칠 때 /가 중복되지 않도록)
-        if (baseUrl.endsWith("/")) {
-            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
-        }
-
-        return baseUrl + suffix;
     }
 
     private static final String DEFAULT_SAMPLE_PATH = "samples/5/13930c43-32ad-4a56-ad35-b18bddf75744.webm";
@@ -409,7 +380,7 @@ public class VoiceService {
         String refText;
 
         if (samples.isEmpty()) {
-            // Fallback to Default Voice Model (Hardcoded to prevent DB lookup failure)
+            
             refWavKey = DEFAULT_SAMPLE_PATH;
             refText = DEFAULT_SAMPLE_TRANSCRIPT;
             log.info("[TTS] User {} has no voice model. Using Default Sample (Fallback): {}", userId, refWavKey);

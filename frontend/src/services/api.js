@@ -12,34 +12,38 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
   withCredentials: true,
-  timeout: 5000, // 5초 타임아웃 (서버 응답 없을 시 무한 로딩 방지)
+  timeout: 5000, 
 });
 
-// 모든 요청에 토큰을 자동으로 붙여주는 인터셉터
+
 apiClient.interceptors.request.use(
   (config) => {
-    // 전역 로딩 시작 (silent 옵션이 있으면 건너뜀)
+    
     const uiStore = useUiStore();
     if (!config.silent && !config.headers?.silent) {
       uiStore.startLoading();
     } else {
-      // 헤더에 silent가 있으면 실제 요청 선에서 제거 (서버 전송 방지)
+      
       if (config.headers?.silent) delete config.headers.silent;
-      config.isSilent = true;
+      config.isSilent = true; 
     }
 
-    // localStorage 또는 sessionStorage에서 토큰 확인
+    
     let token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
 
-    // 모바일 앱: AndroidBridge에서 토큰 가져오기 (fallback)
+    
+
+    
     if (!token && window.AndroidBridge?.getAccessToken) {
       const nativeToken = window.AndroidBridge.getAccessToken();
       if (nativeToken && nativeToken !== 'null' && nativeToken.length > 0) {
         token = nativeToken;
+        
       }
     }
 
     if (token) {
+      
       config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -186,6 +190,141 @@ apiClient.interceptors.response.use(
   },
 );
 
+
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+apiClient.interceptors.response.use(
+  (response) => {
+    
+    const uiStore = useUiStore();
+    if (!response.config?.isSilent) {
+      uiStore.finishLoading();
+    }
+    return response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+
+    
+    Logger.error(`🌐 [API 오류] ${error.config?.method?.toUpperCase()} ${error.config?.url}`, error);
+    if (error.response) {
+      Logger.error(`   상태 코드: ${error.response.status}`, error.response.data);
+    } else if (error.request) {
+      Logger.error(`   응답 없음. 네트워크 또는 CORS 문제일 수 있습니다.`);
+    } else {
+      Logger.error(`   메시지: ${error.message}`);
+    }
+
+
+
+    
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url.includes('/auth/reissue')) {
+      if (isRefreshing) {
+        
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: (token) => {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              resolve(apiClient(originalRequest));
+            },
+            reject: (err) => {
+              reject(err);
+            },
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+
+        const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
+        if (!refreshToken) {
+          throw new Error("No refresh token available");
+        }
+
+        
+        const { data } = await apiClient.post('/auth/reissue', {
+          refreshToken: refreshToken
+        });
+
+        const newAccessToken = data.accessToken;
+        const newRefreshToken = data.refreshToken; 
+
+        if (newAccessToken) {
+          localStorage.setItem('accessToken', newAccessToken);
+          if (newRefreshToken) {
+            localStorage.setItem('refreshToken', newRefreshToken);
+          }
+
+          
+          if (window.AndroidBridge && window.AndroidBridge.saveAccessToken) {
+            window.AndroidBridge.saveAccessToken(newAccessToken);
+          }
+
+          apiClient.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+          processQueue(null, newAccessToken);
+          return apiClient(originalRequest);
+        } else {
+          throw new Error("No token returned");
+        }
+      } catch (err) {
+        Logger.error("❌ 토큰 갱신 실패:", err);
+        processQueue(err, null);
+
+        
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        sessionStorage.removeItem('accessToken');
+        sessionStorage.removeItem('refreshToken');
+
+        if (window.AndroidBridge) {
+          if (window.AndroidBridge.logout) window.AndroidBridge.logout();
+          if (window.AndroidBridge.saveAccessToken) window.AndroidBridge.saveAccessToken(""); 
+        }
+
+        
+        const uiStore = useUiStore();
+        uiStore.finishLoading();
+
+        window.location.href = '#/login';
+        return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    
+    if (error.response?.status === 404) {
+      const modalStore = useModalStore();
+      modalStore.openAlert("요청하신 페이지나 정보를 찾을 수 없습니다. (404 Not Found)", "오류");
+    }
+
+    
+    const uiStore = useUiStore();
+    if (!error.config?.isSilent) {
+      uiStore.finishLoading();
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 export const getUserProfile = () => {
   return apiClient.get('/users/profile/me');
 };
@@ -197,6 +336,7 @@ export const updateUserProfile = (data) => {
     },
   });
 };
+
 
 export const joinFamilyWithCode = (inviteCode) => {
   return apiClient.post('/families/join', inviteCode, {
@@ -215,12 +355,14 @@ export const logout = () => {
   return apiClient.post('/auth/logout');
 };
 
-// 토큰 재발급 API (수동 호출용)
+
 export const reissueToken = () => {
   return apiClient.post('/auth/reissue');
 };
 
+
 export const findEmail = (data) => {
+  
   return apiClient.post('/auth/find/email', data);
 };
 
@@ -240,6 +382,7 @@ export const login = (credentials) => {
   return apiClient.post('/auth/login', credentials);
 };
 
+
 export default apiClient;
 
 export const getNotificationHistory = async (familyId) => {
@@ -255,7 +398,7 @@ export const getNotificationHistory = async (familyId) => {
 export const getFallVideo = async (eventId) => {
   try {
     const response = await apiClient.get(`/falls/${eventId}/video`);
-    return response.data;
+    return response.data; 
   } catch (error) {
     Logger.error(`낙상 영상 조회 실패 (Event ID: ${eventId}):`, error);
     throw error;
@@ -271,6 +414,7 @@ export const getFamilyDetails = async (familyId) => {
     throw error;
   }
 };
+
 
 export const generatePairingCode = async (familyId) => {
   try {
@@ -322,12 +466,13 @@ export const deleteIotDevice = async (familyId, deviceId) => {
   }
 };
 
+
 export const getLatestHeartRate = async (familyId) => {
   try {
     const response = await apiClient.get('/health/heart-rate/latest', {
-      params: { groupId: familyId },
+      params: { groupId: familyId }
     });
-    return response.data;
+    return response.data; 
   } catch (error) {
     Logger.error(`최신 심박수 조회 실패 (ID: ${familyId}):`, error);
     throw error;
@@ -337,7 +482,7 @@ export const getLatestHeartRate = async (familyId) => {
 export const getHeartRateResult = async (eventId) => {
   try {
     const response = await apiClient.get(`/health/heart-rate/${eventId}`);
-    return response.data;
+    return response.data; 
   } catch (error) {
     Logger.error(`심박수 결과 조회 실패 (Event ID: ${eventId}):`, error);
     throw error;

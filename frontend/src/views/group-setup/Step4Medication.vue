@@ -100,13 +100,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { useGroupSetupStore } from '@/stores/groupSetup';
-import { useFamilyStore } from '@/stores/family';
-import { useModalStore } from '@/stores/modal';
-import { storeToRefs } from 'pinia';
-import MedicationAddModal from './MedicationAddModal.vue';
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useGroupSetupStore } from '@/stores/groupSetup'
+import { useFamilyStore } from '@/stores/family'
+import { useModalStore } from '@/stores/modal'
+import { storeToRefs } from 'pinia'
+import MedicationAddModal from './MedicationAddModal.vue'
 
 const router = useRouter();
 const route = useRoute();
@@ -175,8 +175,24 @@ const formatTimes = (times) => {
  */
 const complete = async () => {
   try {
-    await setupStore.saveData(familyId);
-    await syncAndRedirect();
+    await setupStore.saveData(familyId)
+    
+    
+    const familyStore = useFamilyStore();
+    await familyStore.fetchFamilies(true);
+    
+    
+    const updatedFamily = familyStore.families.find(f => f.id == familyId);
+    if (updatedFamily) {
+      familyStore.selectFamily(updatedFamily);
+    }
+    
+    await modalStore.openAlert('그룹 설정이 저장되었습니다.')
+    
+    
+    setupStore.reset()
+    router.push('/home')
+    
   } catch (error) {
     handleSaveError(error);
   }

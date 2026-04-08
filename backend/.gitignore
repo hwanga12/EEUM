@@ -38,6 +38,7 @@ out/
 
 ### .properties file ###
 application-secret.yml
+local.properties
 
 # JWT Private Key
 *.pem

@@ -154,9 +154,7 @@ const joining = ref(false);
 
 const inviteCode = route.query.code;
 
-/**
- * 초대 정보 미리보기 정보를 서버에서 가져옵니다.
- */
+
 const fetchInvitePreview = async () => {
   if (!inviteCode) {
     handleInvalidInvite();
@@ -181,31 +179,25 @@ const fetchInvitePreview = async () => {
   }
 };
 
-/**
- * 인원이 비정상인 경우를 처리합니다.
- */
-const handleInvalidInvite = () => {
-  error.value = '유효하지 않은 초대 링크입니다.';
-  loading.value = false;
-};
 
-/**
- * 미인증 상태에서 링크 진입 시 로그인을 유도합니다.
- */
-const handleUnauthorizedInvite = () => {
-  sessionStorage.setItem('redirectAfterLogin', `/join?code=${inviteCode}`);
-  router.replace('/login');
-};
-
-/**
- * 실제 그룹 참여 API를 호출하고 상태를 동기화합니다.
- */
 const joinGroup = async () => {
   joining.value = true;
   try {
     const response = await joinFamilyWithCode(inviteCode);
-    await syncFamilyData(response.data);
-
+    
+    
+    const familyStore = useFamilyStore();
+    const setupStore = useGroupSetupStore();
+    
+    await familyStore.fetchFamilies();
+    
+    
+    if (response && response.data) {
+        familyStore.selectFamily(response.data);
+    }
+    
+    setupStore.reset();
+    
     await modalStore.openAlert('그룹에 성공적으로 참여했습니다!');
     router.replace('/home');
   } catch (e) {

@@ -171,9 +171,7 @@ const isEmailVerified = ref(false);
 const isLoading = ref(false);
 const errorMessage = ref('');
 
-/**
- * 이메일 인증 코드를 서버에 요청합니다.
- */
+
 const sendCode = async () => {
   if (!form.email) {
     errorMessage.value = '이메일을 입력해주세요.';
@@ -194,9 +192,7 @@ const sendCode = async () => {
   }
 };
 
-/**
- * 전송된 인증 코드를 확인합니다.
- */
+
 const verifyCode = async () => {
   if (!form.code) {
     errorMessage.value = '인증 코드를 입력해주세요.';
@@ -220,11 +216,7 @@ const verifyCode = async () => {
   }
 };
 
-/**
- * 비밀번호 유효성 검사 (8자 이상, 영문/숫자/특수문자 포함)
- * @param {string} password
- * @returns {boolean}
- */
+
 const validatePassword = (password) => {
   const hasLetter = /[a-zA-Z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
@@ -233,9 +225,7 @@ const validatePassword = (password) => {
   return hasLetter && hasNumber && hasSpecial && isValidLength;
 };
 
-/**
- * 회원가입 버튼 클릭 시 전체 유효성 검사 및 가입 요청을 보냅니다.
- */
+
 const handleSignup = async () => {
   if (!validateSignupForm()) return;
 

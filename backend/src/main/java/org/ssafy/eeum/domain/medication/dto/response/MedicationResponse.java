@@ -1,6 +1,5 @@
 package org.ssafy.eeum.domain.medication.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 import lombok.Getter;
 import org.ssafy.eeum.domain.medication.entity.CycleType;
@@ -24,7 +23,7 @@ public class MedicationResponse {
     private int daysOfWeek;
     private LocalDate startDate;
     private LocalDate endDate;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm", timezone = "Asia/Seoul")
+    @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "HH:mm", timezone = "Asia/Seoul")
     private List<LocalTime> notificationTimes;
 
     public static MedicationResponse from(MedicationPlan medicationPlan) {
@@ -41,7 +40,8 @@ public class MedicationResponse {
                 .notificationTimes(
                         medicationPlan.getMedicationPlanTimes().stream()
                                 .map(MedicationPlanTime::getNotificationTime)
-                                .collect(Collectors.toList()))
+                                .collect(Collectors.toList())
+                )
                 .build();
     }
 }

@@ -6,7 +6,6 @@ import org.springframework.web.bind.annotation.*;
 import org.ssafy.eeum.domain.message.dto.MessageRequestDto;
 import org.ssafy.eeum.domain.message.dto.MessageResponseDto;
 import org.ssafy.eeum.domain.message.service.MessageService;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.ssafy.eeum.global.auth.model.CustomUserDetails;
 import org.ssafy.eeum.global.common.response.RestApiResponse;
 
@@ -22,7 +21,7 @@ public class MessageController {
     @PostMapping("/{groupId}/messages")
     public RestApiResponse<MessageResponseDto> send(
             @PathVariable Integer groupId,
-            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody MessageRequestDto requestDto) {
 
         MessageResponseDto response = messageService.send(groupId, userDetails.getId(), requestDto);
@@ -32,11 +31,9 @@ public class MessageController {
     @GetMapping("/{groupId}/messages")
     public RestApiResponse<List<MessageResponseDto>> getMessages(
             @PathVariable Integer groupId,
-            @org.springframework.security.core.annotation.AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @org.springframework.security.core.annotation.AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        List<MessageResponseDto> responses = messageService.getMessages(groupId, userDetails.getId(), page, size);
+        List<MessageResponseDto> responses = messageService.getMessages(groupId, userDetails.getId());
         return RestApiResponse.success(responses);
     }
 

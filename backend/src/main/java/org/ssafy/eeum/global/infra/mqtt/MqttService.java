@@ -31,23 +31,14 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.transaction.annotation.Transactional;
-import org.ssafy.eeum.domain.iot.dto.MqttAlarmMessageDTO;
 
-/**
- * MQTT 프로토콜을 이용해 IoT 기기와 실시간 메시지를 주고받으며 기기를 제어하는 서비스 클래스입니다.
- * 
- * @summary MQTT 통합 관리 서비스
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class MqttService {
 
     private final MessageChannel mqttOutboundChannel;
-    private final ObjectMapper objectMapper;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final SensorEventService sensorEventService;
     private final DeviceStatusService deviceStatusService;
     private final FallEventService fallEventService;
@@ -73,17 +64,11 @@ public class MqttService {
     }
 
     public void sendToIot(Integer groupId, String category, String jsonPayload) {
-        // 사용 형식 : eeum/group/{groupId}/{category}
+        
         String topic = String.format("eeum/group/%d/%s", groupId, category);
         publish(topic, jsonPayload);
     }
 
-    /**
-     * MQTT 채널을 통해 수신된 메시지를 분석하여 토픽별 핸들러로 라우팅합니다.
-     * 
-     * @summary MQTT 메시지 수신 및 라우팅
-     * @param message 수신된 MQTT 메시지 객체
-     */
     @ServiceActivator(inputChannel = "mqttInputChannel")
     public void handleMessage(Message<?> message) {
         String topic = (String) message.getHeaders().get(MqttHeaders.RECEIVED_TOPIC);
@@ -99,20 +84,46 @@ public class MqttService {
         log.debug("MQTT Message Received - Topic: {}, Payload: {}", topic, payload);
 
         try {
-            // 토픽에 따른 분기 처리
-            if ("eeum/response".equals(topic)) {
-                handleResponse(payload); // 음성 응답 처리
+            if ("eeum/sync".equals(topic)) {
+                handleSync(payload);
+            } else if ("eeum/response".equals(topic)) {
+                handleResponse(payload);
             } else if ("eeum/event".equals(topic)) {
-                handleEvent(payload); // 센서 이벤트 처리
+                handleEvent(payload);
             } else if ("eeum/update".equals(topic)) {
-                handleUpdate(payload); // 기기 업데이트 확인 처리
+                handleUpdate(payload);
             } else if ("eeum/status".equals(topic)) {
-                handleStatus(payload); // 기기 온라인/오프라인 상태 처리
+                handleStatus(payload);
             } else if ("eeum/responsenull".equals(topic)) {
-                handleResponseNull(payload); // LLM 테스트용 응답 처리
+                handleResponseNull(payload);
             }
         } catch (Exception e) {
             log.error("Error handling MQTT message for topic {}: {}", topic, e.getMessage());
+        }
+    }
+
+    private void handleSync(String payload) {
+        try {
+            JsonNode node = objectMapper.readTree(payload);
+            String token = getTokenFromNode(node);
+            Integer groupId = validateTokenAndGetGroupId(token);
+
+            String masterSerialNumber = node.path("serial_number").asText();
+            JsonNode linkArray = node.path("link");
+
+            if (linkArray.isArray()) {
+                for (JsonNode linkNode : linkArray) {
+                    String slaveSerial = linkNode.path("id").asText();
+                    boolean alive = linkNode.path("alive").asBoolean();
+
+                    
+                    deviceStatusService.updateDeviceStatus(
+                            groupId, masterSerialNumber, slaveSerial, alive);
+                }
+            }
+            log.debug("Handled Status Sync for Family: {}", groupId);
+        } catch (Exception e) {
+            log.warn("Failed to handle sync: {}", e.getMessage());
         }
     }
 
@@ -132,7 +143,7 @@ public class MqttService {
         try {
             JsonNode node = objectMapper.readTree(payload);
             String sttContent = node.path("stt_content").asText();
-            int familyId = node.path("family_id").asInt();
+            int familyId = node.path("family_id").asInt(9); 
 
             log.info("Handling ResponseNull (LLM Test Mode) - stt_content: {}, familyId: {}", sttContent, familyId);
             fallEventService.testSentimentAnalysis(familyId, sttContent);
@@ -153,7 +164,7 @@ public class MqttService {
             log.info("Processing Voice Response Core: msg_id={}, serial_number={}, stt_content={}, groupId={}",
                     msgId, serialNumber, sttContent, groupId);
 
-            // STT 내용이 비어있으면 즉시 비상 처리
+            
             if (sttContent == null || sttContent.trim().isEmpty()) {
                 fallEventService.handleEmptyVoiceResponse(groupId);
                 log.warn("Empty STT Response - Auto EMERGENCY: MsgId={}, Family={}, SN={}",
@@ -161,7 +172,7 @@ public class MqttService {
                 return;
             }
 
-            // 직접 FallEventService 호출 (가족 그룹 내 최신 낙상 이벤트 처리)
+            
             fallEventService.handleVoiceResponse(groupId, sttContent);
 
             log.info("Successfully Processed Voice Response Core: MsgId={}, Family={}, SN={}, DetectedAt={}",
@@ -187,11 +198,11 @@ public class MqttService {
             LocalDateTime startedAt = convertTimestamp(startedAtTimestamp);
             LocalDateTime detectedAt = convertTimestamp(detectedAtTimestamp);
 
-            // 기존 로직과의 호환성을 위해 location 필드 유지 (선택적)
+            
             String location = node.path("location").asText();
 
-            // 센서 이벤트 저장 (중복 방지 포함)
-            // Note: 기존에는 "id" 필드를 deviceEventId로 사용했으나, 새 명세에서는 msg_id 사용
+            
+            
             sensorEventService.handleSensorEvent(
                     groupId, msgId, serialNumber, kind, eventType,
                     location, startedAt, detectedAt, payload);
@@ -229,7 +240,7 @@ public class MqttService {
                         String slaveSerial = linkNode.path("id").asText();
                         boolean alive = linkNode.path("alive").asBoolean();
 
-                        // DB에 상태 저장
+                        
                         deviceStatusService.updateDeviceStatus(
                                 groupId, serialNumber, slaveSerial, alive);
                     }
@@ -246,21 +257,15 @@ public class MqttService {
         }
     }
 
-    /**
-     * Server -> IoT 업데이트 알림 전송
-     * 
-     * @param deviceId  디바이스 시리얼 번호
-     * @param kind      업데이트 종류 (image/voice/text/schedule)
-     * @param updateCnt 업데이트 카운트
-     */
+    
     public void sendDeviceUpdateNotification(String deviceId, String kind, Integer updateCnt) {
         try {
             String topic = String.format("eeum/device/%s/update", deviceId);
 
-            String msgId = UUID.randomUUID().toString();
+            String msgId = java.util.UUID.randomUUID().toString();
             double sentAt = System.currentTimeMillis() / 1000.0;
 
-            Map<String, Object> payload = new HashMap<>();
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
             payload.put("msg_id", msgId);
             payload.put("kind", kind);
             payload.put("update_cnt", updateCnt);
@@ -282,17 +287,14 @@ public class MqttService {
                 .orElse(null);
     }
 
-    /**
-     * IoT 기기로 알람 전송 (복약, 일정 등)
-     * Topic: eeum/device/{device_id}/alarm
-     */
-    public void sendAlarm(String serialNumber, String kind, String content, Map<String, Object> data) {
+    
+    public void sendAlarm(String serialNumber, String kind, String content, java.util.Map<String, Object> data) {
         try {
             String topic = String.format("eeum/device/%s/alarm", serialNumber);
-            String msgId = UUID.randomUUID().toString();
+            String msgId = java.util.UUID.randomUUID().toString();
             double sentAt = System.currentTimeMillis() / 1000.0;
 
-            MqttAlarmMessageDTO message = MqttAlarmMessageDTO
+            org.ssafy.eeum.domain.iot.dto.MqttAlarmMessageDTO message = org.ssafy.eeum.domain.iot.dto.MqttAlarmMessageDTO
                     .builder()
                     .msgId(msgId)
                     .kind(kind)
@@ -304,7 +306,7 @@ public class MqttService {
             String jsonPayload = objectMapper.writeValueAsString(message);
             publish(topic, jsonPayload);
 
-            // 알림 로그 저장 추가
+            
             Integer groupId = getGroupIdBySerialNumber(serialNumber);
             if (groupId != null) {
                 notificationService.saveNotification(serialNumber, groupId, kind, msgId, content);
@@ -316,7 +318,7 @@ public class MqttService {
         }
     }
 
-    @Transactional
+    @org.springframework.transaction.annotation.Transactional
     protected void handleUpdate(String payload) {
         try {
             JsonNode node = objectMapper.readTree(payload);
@@ -324,7 +326,7 @@ public class MqttService {
             DeviceDetails deviceDetails = validateTokenAndGetDeviceDetails(token);
 
             String kind = node.path("kind").asText();
-            int logId = node.path("log_id").asInt(0); // Default 0 if missing
+            int logId = node.path("log_id").asInt(0); 
 
             Family family = familyRepository.findById(deviceDetails.getGroupId())
                     .orElseThrow(() -> new CustomException(ErrorCode.FAMILY_NOT_FOUND));
@@ -369,6 +371,8 @@ public class MqttService {
     private String getTokenFromNode(JsonNode node) {
         if (node.has("token"))
             return node.path("token").asText();
+        if (node.has("toekn"))
+            return node.path("toekn").asText();
         throw new IllegalArgumentException("Token is missing");
     }
 

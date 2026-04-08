@@ -64,6 +64,11 @@ onMounted(() => {
  * 그룹 이름을 저장한 후 다음 단계(건강 정보 입력)로 이동합니다.
  */
 const goNext = () => {
+  
+  
+  
+  
+  
   router.push({
     name: 'GroupEditStep2',
     params: { familyId },

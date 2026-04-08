@@ -156,13 +156,13 @@ const familyStore = useFamilyStore();
 const userStore = useUserStore();
 const setupStore = useGroupSetupStore();
 
-/** 스토어 상태 바인딩 */
+
 const { contactSlots } = storeToRefs(setupStore);
 
-const selectedSlotIndex = ref(0);
+const selectedSlotIndex = ref(0); 
 const members = ref([]);
 
-/** 사용 가능한 멤버 - 현재는 모든 멤버를 표시함 */
+
 const availableMembers = computed(() => {
   return members.value;
 });
@@ -189,11 +189,16 @@ const selectSlot = (index) => {
  * @param {Object} member
  */
 const addContact = (member) => {
-  /** 현재 선택된 슬롯을 채움 */
-  if (selectedSlotIndex.value !== null) {
-    contactSlots.value[selectedSlotIndex.value] = member;
-    autoAdvanceSlot();
-  }
+    
+    if (selectedSlotIndex.value !== null) {
+        contactSlots.value[selectedSlotIndex.value] = member;
+        
+        
+        const nextEmptyIndex = contactSlots.value.findIndex(slot => slot === null);
+        if (nextEmptyIndex !== -1) {
+            selectedSlotIndex.value = nextEmptyIndex;
+        }
+    }
 };
 
 /**
@@ -212,23 +217,25 @@ const autoAdvanceSlot = () => {
  * @param {Event} event
  */
 const removeContact = (index, event) => {
-  event.stopPropagation(); /** 제거 클릭 시 슬롯 선택 방지 */
-  if (contactSlots.value[index]) {
-    contactSlots.value[index] = null;
-    selectedSlotIndex.value = index; /** 비워진 슬롯 선택 */
-  }
+    event.stopPropagation(); 
+    if (contactSlots.value[index]) {
+        contactSlots.value[index] = null;
+        selectedSlotIndex.value = index; 
+    }
 };
 
 onMounted(async () => {
-  const familyId = route.params.familyId;
-  if (familyId) {
-    setupStore.initData(familyId);
-
-    try {
-      const membersResponse = await api.get(`/families/${familyId}/members`);
-      members.value = membersResponse.data.filter((m) => !m.isPlaceholder);
-    } catch (error) {
-      Logger.error('데이터 조회 실패:', error);
+    const familyId = route.params.familyId;
+    if (familyId) {
+        setupStore.initData(familyId);
+        
+        try {
+            
+            const membersResponse = await api.get(`/families/${familyId}/members`);
+            members.value = membersResponse.data.filter(m => !m.isPlaceholder);
+        } catch (error) {
+            Logger.error("데이터 조회 실패:", error);
+        }
     }
   }
 });
@@ -241,9 +248,11 @@ const goBack = () => {
  * 다음 단계(복약 정보 입력)로 이동합니다.
  */
 const goNext = () => {
-  router.push({
-    name: 'GroupEditStep4',
-    params: { familyId: route.params.familyId },
-  });
+    
+    
+    router.push({
+        name: 'GroupEditStep4',
+        params: { familyId: route.params.familyId }
+    });
 };
 </script>

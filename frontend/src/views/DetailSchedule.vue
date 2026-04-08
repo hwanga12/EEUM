@@ -2,17 +2,9 @@
   <div class="bg-background-light text-slate-800 min-h-screen flex flex-col" v-if="schedule">
     <header class="sticky top-0 z-20 bg-background-light/80 backdrop-blur-md px-6 pt-12 pb-4">
       <div class="flex items-center">
-        <button
-          @click="$router.back()"
-          class="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
-        >
+        <button @click="$router.back()" class="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
           <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M15 19l-7-7 7-7"
-            />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
         <h1 class="flex-1 text-center text-xl font-bold text-slate-900 mr-8">일정 상세</h1>
@@ -74,14 +66,8 @@
         </div>
       </div>
     </main>
-    <div
-      v-if="isCreator"
-      class="fixed bottom-0 left-0 right-0 px-6 py-4 flex gap-3 bg-gradient-to-t from-background-light via-background-light/90 to-transparent"
-    >
-      <button
-        @click="confirmDelete"
-        class="flex-1 py-4 bg-slate-200 text-slate-700 font-bold rounded-2xl active:scale-[0.98] transition-all"
-      >
+    <div v-if="isCreator" class="fixed bottom-0 left-0 right-0 px-6 py-4 flex gap-3 bg-gradient-to-t from-background-light via-background-light/90 to-transparent">
+      <button @click="confirmDelete" class="flex-1 py-4 bg-slate-200 text-slate-700 font-bold rounded-2xl active:scale-[0.98] transition-all">
         삭제
       </button>
       <button
@@ -158,24 +144,20 @@ const showDeleteModal = ref(false);
 
 const scheduleId = route.query.id;
 
-/** @type {import('vue').ComputedRef<boolean>} 현재 사용자가 일정 생성자인지 여부 */
 const isCreator = computed(() => {
-  return schedule.value?.creatorId === userStore.profile?.id;
+    return schedule.value?.creatorId === userStore.profile?.id;
 });
 
-/**
- * 서버로부터 일정 상세 정보를 가져옵니다.
- */
 const fetchSchedule = async () => {
-  const familyId = route.params.familyId || familyStore.selectedFamily?.id;
-  if (!userStore.profile) await userStore.fetchUser();
-
-  if (!familyId || !scheduleId) return;
-  try {
-    schedule.value = await scheduleService.getSchedule(familyId, scheduleId);
-  } catch (error) {
-    Logger.error('일정 상세 로드 실패', error);
-  }
+    const familyId = route.params.familyId || familyStore.selectedFamily?.id;
+    if (!userStore.profile) await userStore.fetchUser();
+    
+    if (!familyId || !scheduleId) return;
+    try {
+        schedule.value = await scheduleService.getSchedule(familyId, scheduleId);
+    } catch (error) {
+        Logger.error("일정 상세 로드 실패", error);
+    }
 };
 
 /** @type {import('vue').ComputedRef<string>} 카테고리 표시 텍스트 */
@@ -240,15 +222,15 @@ const timeRange = computed(() => {
  * @param {boolean} [deleteAll=false] - 반복 일정의 경우 전체 삭제할지 여부
  */
 const handleDelete = async (deleteAll = false) => {
-  const familyId = route.params.familyId || familyStore.selectedFamily?.id;
-  if (!familyId) return;
-  try {
-    await scheduleService.deleteSchedule(familyId, scheduleId, deleteAll);
-    router.back();
-  } catch (error) {
-    Logger.error('삭제 실패', error);
-    await modalStore.openAlert('삭제 실패');
-  }
+    const familyId = route.params.familyId || familyStore.selectedFamily?.id;
+    if (!familyId) return;
+    try {
+        await scheduleService.deleteSchedule(familyId, scheduleId, deleteAll);
+        router.back();
+    } catch (error) {
+        Logger.error("삭제 실패", error);
+        await modalStore.openAlert("삭제 실패");
+    }
 };
 
 /**

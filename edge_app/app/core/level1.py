@@ -29,7 +29,6 @@ def bbox_center_x(bbox: Optional[List[float]]) -> Optional[float]:
     return (x1 + x2) * 0.5
 
 def bbox_h(bbox: Optional[List[float]]) -> Optional[float]:
-    """바운딩 박스의 높이를 계산합니다."""
     if not bbox or len(bbox) != 4:
         return None
     _, y1, _, y2 = bbox
@@ -38,90 +37,68 @@ def bbox_h(bbox: Optional[List[float]]) -> Optional[float]:
 
 @dataclass
 class Level1Params:
-    """낙상 감지 알고리즘 파라미터 정의 클래스"""
     min_quality: float = 0.15
 
-    # 낙하 신호(Velocity) 관련
     drop_window_s: float = 0.5
     vy_th: float = 0.3
     drop_hits_k: int = 1
 
-    # 자세 변화(Aspect Ratio) 관련
     baseline_window_s: float = 3.0
     aspect_abs_th: float = 1.6
     aspect_ratio_th: float = 0.75
 
-    # 지속 시간 및 타임아웃 관련
     sustain_s: float = 10.0
     abnormal_timeout_s: float = ABNORMAL_TIMEOUT_S
 
-    # 회복(Recovery) 판단 관련
     recover_s: float = 2.0
     aspect_recover_ratio: float = 0.9
     recover_center_move_th: float = 0.10
 
-    # 정지 상태(Stillness) 판단 관련
     still_center_th: float = 0.010
     still_kp_th: float = 0.020
     still_need_kp: bool = True
 
-    # 부분 신체 감지(Partial Body) 관련
     partial_min_y2: float = 0.95
     partial_conf_th: float = 0.3
     partial_vy_relax: float = 0.6
 
-    # 강제 이상행동 전환 임계치
     force_abnormal_aspect_th: float = 0.7
     force_abnormal_frames: int = 45
 
-    # 고스트(노이즈) 타임아웃
     ghost_timeout_s: float = ABNORMAL_TIMEOUT_S
     screen_edge_margin: float = 0.05
 
-    # 웜업 프레임
     warmup_frames: int = 12
 
-    # 부분 신체 판단용 마진
     partial_edge_margin: float = 0.06
     partial_big_w: float = 0.45
     partial_big_h: float = 0.70
 
-    # 이벤트 유지 및 쿨다운
     level1_hold_s: float = 1.0
     level1_cooldown_s: float = 25.0
 
-    # 오탐 줄이는 핵심: 단발 신호가 아니라 "짧은 지속" 요구
-    enter_confirm_s: float = 0.35          # 0.3~0.5초 권장
-    enter_confirm_need: int = 2            # 드랍/자세/어깨 중 N개 만족해야 ABNORMAL 진입
-    posture_persist_s: float = 0.25        # 자세 변화가 이 시간만큼 연속되어야 인정
-    shoulder_drop_persist_s: float = 0.20  # 어깨 하강 신호 연속성 요구
+    
+    enter_confirm_s: float = 0.35          
+    enter_confirm_need: int = 2            
+    posture_persist_s: float = 0.25        
+    shoulder_drop_persist_s: float = 0.20  
 
-    # 타임아웃 전환 시 "붕괴 확인(confirm)" 필수 여부
+    
     timeout_requires_confirm: bool = True
 
-    # 이상행동 진입 직후 초기 회복 판정 방지 유예 시간
+    
     recover_grace_s: float = 0.8
 
-    # 이상행동 중 붕괴 확정 조건
-    confirm_aspect_rel: float = 0.65       # baseline 대비 비율
-    confirm_aspect_abs: float = 1.0        # 절대값 기준
+    
+    confirm_aspect_rel: float = 0.65       
+    confirm_aspect_abs: float = 1.0        
 
-    # 높이 변화 판단
-    height_baseline_window_s: float = 3.0
-    height_ratio_th: float = 0.65
-    height_persist_s: float = 0.20
+    height_baseline_window_s: float = 3.0     
+    height_ratio_th: float = 0.65             
+    height_persist_s: float = 0.20            
 
 
 class Level1Engine:
-    """
-    낙상 감지 및 분석 엔진 클래스
-    
-    상태도:
-    NORMAL -> ABNORMAL (의심) -> LEVEL1 (낙상 확정)
-                |
-                v
-              NORMAL (회복 시)
-    """
     def __init__(self, p: Level1Params):
         from collections import deque
         self.p = p
@@ -165,15 +142,15 @@ class Level1Engine:
         self.level1_ts: Optional[float] = None
         self.cooldown_until_ts: float = 0.0
 
-        # 오탐 방지를 위한 누적 타이머
+        
         self.enter_acc_s: float = 0.0
         self.posture_acc_s: float = 0.0
         self.shoulder_acc_s: float = 0.0
 
-        # 이상행동 중 붕괴 확정 래치
+        
         self.abnormal_confirmed: bool = False
 
-        self.height_hist = deque()   # (ts, h)
+        self.height_hist = deque()   
         self.height_acc_s: float = 0.0
         self.baseline_h_at_enter: Optional[float] = None
 
@@ -213,11 +190,12 @@ class Level1Engine:
 
         self.present_streak = 0
 
-        # 쿨다운은 초기화 대상에서 제외하고 유지함
+        
         cooldown_until = self.cooldown_until_ts
         self.level1_ts = None
         self.cooldown_until_ts = cooldown_until
 
+        
         self.enter_acc_s = 0.0
         self.posture_acc_s = 0.0
         self.shoulder_acc_s = 0.0
@@ -228,7 +206,6 @@ class Level1Engine:
         self.baseline_h_at_enter = None
 
     def _compute_baseline_h(self, ts: float) -> Optional[float]:
-        """일정 시간 동안의 높이 baseline(평균 신장)을 계산합니다."""
         while self.height_hist and ts - self.height_hist[0][0] > self.p.height_baseline_window_s:
             self.height_hist.popleft()
         if len(self.height_hist) < 5:
@@ -238,7 +215,6 @@ class Level1Engine:
 
 
     def _compute_baseline_aspect(self, ts: float) -> Optional[float]:
-        """일정 시간 동안의 가로세로비 baseline을 계산합니다."""
         while self.aspect_hist and ts - self.aspect_hist[0][0] > self.p.baseline_window_s:
             self.aspect_hist.popleft()
         if len(self.aspect_hist) < 5:
@@ -247,7 +223,6 @@ class Level1Engine:
         return vals[int(0.8 * (len(vals) - 1))]
 
     def _compute_drop_signal(self, ts: float, cy: float) -> Tuple[Optional[float], float, bool]:
-        """중심점 Y 좌표 변화량을 통해 하강 속도와 낙하 신호를 계산합니다."""
         vy = None
         dt = 0.0
         if self.prev_ts is not None and self.prev_cy is not None:
@@ -263,7 +238,6 @@ class Level1Engine:
         return vy, dt, drop_signal
 
     def _compute_shoulder_drop(self, ts: float, kps_list: List[Dict[str, Any]]) -> Tuple[Optional[float], bool]:
-        """어깨 부위 키포인트의 하강 속도를 계산합니다."""
         def get_kp(kid: int):
             return next((k for k in kps_list if int(k.get("id", -1)) == kid), None)
 
@@ -293,7 +267,6 @@ class Level1Engine:
         return shoulder_vy, shoulder_drop
 
     def _check_partial_body(self, bbox: List[float], kps_list: List[Dict[str, Any]]) -> bool:
-        """사람의 몸이 화면 경계 등에 의해 일부만 보이는지 확인합니다."""
         if not bbox or len(bbox) != 4:
             return False
 
@@ -329,7 +302,6 @@ class Level1Engine:
         cy: float,
         kps_list: List[Dict[str, Any]],
     ) -> Tuple[Optional[float], Optional[float], bool]:
-        """객체의 움직임(중심점 및 키포인트 이동)이 없는 정지 상태인지 판단합니다."""
         center_move = None
         kp_move = None
 
@@ -381,7 +353,6 @@ class Level1Engine:
         frame_index = int(obs.get("frame_index", -1))
         tracks = obs.get("tracks") or []
 
-        # 사람 감지 여부 및 품질 확인
         is_lost = False
         if not tracks:
             is_lost = True
@@ -431,6 +402,12 @@ class Level1Engine:
 
         shoulder_vy, shoulder_drop = self._compute_shoulder_drop(ts, kps_list)
 
+        if vy is not None and vy > self.p.vy_th:
+            self.last_drop_ts = ts
+            self.last_drop_vy = vy
+
+        shoulder_vy, shoulder_drop = self._compute_shoulder_drop(ts, kps_list)
+
         # 자세 분석 (절대적 수치 또는 상대적 변화)
         rotate_abs = (aspect < self.p.aspect_abs_th)
         rotate_rel = (baseline is not None and aspect < baseline * self.p.aspect_ratio_th)
@@ -443,7 +420,6 @@ class Level1Engine:
         self.prev_cx = cx
         self.prev_cy = cy
 
-        # 1. 정상(NORMAL) 상태에서의 로직
         if self.state == "NORMAL":
             if self.present_streak < self.p.warmup_frames:
                 return None
@@ -453,19 +429,16 @@ class Level1Engine:
             else:
                 self.low_posture_cnt = 0
 
-            # 자세 변화 지속 시간 누적
             if posture_signal:
                 self.posture_acc_s += dt
             else:
                 self.posture_acc_s = max(0.0, self.posture_acc_s - dt * 2.0)
 
-            # 어깨 낙하 지속 시간 누적
             if shoulder_drop:
                 self.shoulder_acc_s += dt
             else:
                 self.shoulder_acc_s = max(0.0, self.shoulder_acc_s - dt * 2.0)
 
-            # 높이 감소(붕괴) 확인
             height_collapse = False
             if baseline_h is not None and h < baseline_h * self.p.height_ratio_th:
                 self.height_acc_s += dt
@@ -475,7 +448,6 @@ class Level1Engine:
             if self.height_acc_s >= self.p.height_persist_s:
                 height_collapse = True
 
-            # 이상행동 진입 트리거 계산
             signal_hits = 0
             if drop_signal:
                 signal_hits += 1
@@ -495,13 +467,11 @@ class Level1Engine:
                 trigger = True
                 trigger_reason = "low_posture_sustained"
             elif is_partial:
-                # 부분 신체일 때는 어깨 하강이나 극단적 자세 변화 시에만 트리거
                 if (self.shoulder_acc_s >= self.p.shoulder_drop_persist_s) or (aspect < 0.6 and (self.posture_acc_s >= self.p.posture_persist_s)):
                     trigger = True
                     sh = shoulder_vy if shoulder_vy is not None else 0.0
                     trigger_reason = f"partial_persist (sh_vy={sh:.2f}, asp={aspect:.2f})"
             else:
-                # 복합 신호가 지속될 때 트리거
                 if signal_hits >= self.p.enter_confirm_need:
                     self.enter_acc_s += dt
                 else:
@@ -553,7 +523,6 @@ class Level1Engine:
 
             return None
 
-        # 2. 이상행동(ABNORMAL) 상태에서의 로직
         if self.state == "ABNORMAL":
             if not self.abnormal_stats:
                 self.abnormal_stats = {
@@ -576,12 +545,10 @@ class Level1Engine:
 
             time_since_abnormal = ts - self.abnormal_start_ts if self.abnormal_start_ts is not None else 0.0
 
-            # 붕괴 여부 확정(Latch)
             base = self.baseline_at_enter if self.baseline_at_enter is not None else baseline
             if (base is not None and aspect < base * self.p.confirm_aspect_rel) or (aspect < self.p.confirm_aspect_abs) or (drop_signal and (vy is not None and vy > self.p.vy_th)):
                 self.abnormal_confirmed = True
 
-            # 정지 상태 확인 (감쇠 적용)
             DECAY = 2.0
             if is_still:
                 self.still_acc_s += dt
@@ -589,7 +556,6 @@ class Level1Engine:
             else:
                 self.still_acc_s = max(0.0, self.still_acc_s - dt * DECAY)
 
-            # 낙상 판단 Case 1: 정지 상태가 일정 시간 지속됨
             if self.still_acc_s >= self.p.sustain_s and not self.level1_fired:
                 self.level1_fired = True
                 self.state = "LEVEL1"
@@ -599,7 +565,7 @@ class Level1Engine:
                 self.is_ghost_mode = False
                 self.ghost_start_ts = None
                 
-                # 신뢰도 점수 계산
+                
                 conf_score, conf_detail = self._calculate_confidence(abnormal_duration=time_since_abnormal)
 
                 return {
@@ -616,7 +582,6 @@ class Level1Engine:
                     },
                 }
 
-            # 낙상 판단 Case 2: 타임아웃 발생 (붕괴 확정 시에만)
             if time_since_abnormal >= self.p.abnormal_timeout_s and not self.level1_fired:
                 if (not self.p.timeout_requires_confirm) or self.abnormal_confirmed:
                     self.level1_fired = True
@@ -626,9 +591,6 @@ class Level1Engine:
 
                     self.is_ghost_mode = False
                     self.ghost_start_ts = None
-                    
-                    # 타임아웃의 경우에도 신뢰도 계산
-                    conf_score, conf_detail = self._calculate_confidence(abnormal_duration=time_since_abnormal)
 
                     return {
                         "type": "level1",
@@ -640,8 +602,6 @@ class Level1Engine:
                             "confirmed": self.abnormal_confirmed,
                             "center_move": center_move,
                             "kp_move": kp_move,
-                            "confidence_score": conf_score,
-                            "confidence_detail": conf_detail,
                         },
                     }
                 else:
@@ -650,21 +610,28 @@ class Level1Engine:
             if time_since_abnormal < self.p.recover_grace_s:
                 return None
 
-            # 회복(Recovery) 판단
+            
             base = self.baseline_at_enter if self.baseline_at_enter is not None else baseline
 
-            # 로우 레벨 회복 조건
+            
             recover_ratio = min(self.p.aspect_recover_ratio, 0.80)
             recovered_posture = (base is not None and aspect > base * recover_ratio)
+
+            
             recovered_upward = (vy is not None and vy < -0.12)
+
+            
             recovered_move = (center_move is not None and center_move > 0.03)
 
+            
+            
             recovered_now = recovered_posture or (recovered_upward and (recovered_posture or recovered_move))
 
-            # 회복 지속 시간 누적
+            
             if recovered_now:
                 self.recover_acc_s += dt
             else:
+                
                 self.recover_acc_s = max(0.0, self.recover_acc_s - dt * 1.5)
 
 
@@ -694,41 +661,59 @@ class Level1Engine:
 
             return None
 
-        # 3. 낙상(LEVEL1) 상태에서의 루프
         if self.state == "LEVEL1":
             if self.level1_ts is not None and (ts - self.level1_ts) >= self.p.level1_hold_s:
-                # 일정 시간 유지 후 정상 상태로 복구 (또는 쿨다운 적용)
-                self.reset_all()
+                self.state = "NORMAL"
+                self.abnormal_start_ts = None
+                self.recover_acc_s = 0.0
+                self.still_acc_s = 0.0
+                self.level1_fired = False
+                self.is_ghost_mode = False
+                self.ghost_start_ts = None
+                self.abnormal_confirmed = False
+                self.enter_acc_s = 0.0
+                self.posture_acc_s = 0.0
+                self.shoulder_acc_s = 0.0
             return None
 
         return None
 
     def _calculate_confidence(self, abnormal_duration: float) -> Tuple[float, Dict[str, float]]:
         """
-        낙상 신뢰도 점수를 계산합니다 (0~100점).
-        신호 강도(40%), 정지 시간(40%), 데이터 품질(20%) 가중치 적용.
+        낙상 신뢰도 점수 계산 (0~100점)
+        
+        가중치 (detail.md 기준):
+          1. 신호 강도 (40%): max_vy, min_aspect
+          2. 정지 상태 (40%): still_count 비율
+          3. 탐지 품질 (20%): avg_quality
         """
         if not self.abnormal_stats:
             return 0.0, {}
 
         s = self.abnormal_stats
         
-        # 1. 신호 강도 (40점)
+        
+        
         max_vy = s.get("max_vy", 0.0)
-        score_vy = min(20.0, max(0.0, (max_vy - 0.5) * 20.0))
+        score_vy = min(20.0, max(0.0, (max_vy - 0.5) * 20.0))  
+
+        
         min_aspect = s.get("min_aspect", 1.0)
+        
         score_posture = min(20.0, max(0.0, (1.0 - min_aspect) * 33.3)) 
+        
         score_signal = score_vy + score_posture
 
-        # 2. 정지 상태 (40점)
+        
+        
         total_count = s.get("count", 1)
         still_count = s.get("still_count", 0)
         ratio_still = still_count / total_count if total_count > 0 else 0.0
         score_still = ratio_still * 40.0
 
-        # 3. 탐지 품질 (20점)
+        
         avg_quality = s.get("quality_sum", 0.0) / total_count if total_count > 0 else 0.0
-        score_qual = min(20.0, avg_quality * 20.0)
+        score_qual = min(20.0, avg_quality * 20.0) 
 
         total_score = score_signal + score_still + score_qual
         
@@ -746,17 +731,16 @@ class Level1Engine:
 
 @dataclass
 class PresenceParams:
-    """재실 감지 파라미터"""
-    enter_hits: int = 5
-    exit_hits: int = 10
-    min_quality: float = 0.10
-    cool_down_s: float = 0.5
+    enter_hits: int = 5          
+    exit_hits: int = 10          
+    min_quality: float = 0.10    
+    cool_down_s: float = 0.5     
 
 class PresenceEngine:
     """재실(Presence) 감지 엔진: 사람의 출입을 판단합니다."""
     def __init__(self, p: PresenceParams):
         self.p = p
-        self.state = "ABSENT"
+        self.state = "ABSENT"   
         self.present_cnt = 0
         self.absent_cnt = 0
         self.last_emit_ts: float = 0.0
@@ -793,6 +777,7 @@ class PresenceEngine:
             self.absent_cnt += 1
             self.present_cnt = 0
 
+        
         if self.p.cool_down_s > 0 and (ts - self.last_emit_ts) < self.p.cool_down_s:
             return None
 

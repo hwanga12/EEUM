@@ -1,8 +1,5 @@
 package org.ssafy.eeum;
 
-import jakarta.annotation.PostConstruct;
-import java.util.TimeZone;
-
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
@@ -15,9 +12,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class EeumApplication {
 
-    @PostConstruct
+    @jakarta.annotation.PostConstruct
     public void init() {
-        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Seoul"));
     }
 
     public static void main(String[] args) {

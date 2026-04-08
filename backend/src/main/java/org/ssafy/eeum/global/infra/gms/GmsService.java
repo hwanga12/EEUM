@@ -9,18 +9,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 import java.util.Map;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.core.ParameterizedTypeReference;
-import org.ssafy.eeum.domain.health.entity.HealthMetric;
 
-/**
- * GMS(Gemini/GPT Multi-Service)를 통해 AI 기반 건강 리포트 생성 및 음성 감성 분석 기능을 제공하는 서비스
- * 클래스입니다.
- * 
- * @summary AI 인프라 연동 서비스
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -35,15 +25,8 @@ public class GmsService {
         @Value("${spring.gms.model}")
         private String model;
 
-        /**
-         * 수집된 건강 데이터를 분석하여 AI 건강 리포트(요약, 점수, 조언 등)를 생성합니다.
-         * 
-         * @summary 건강 리포트 생성
-         * @param metrics 분석할 건강 지표 리스트
-         * @return 분석 결과가 담긴 맵 객체
-         */
         public Map<String, Object> generateHealthReport(
-                        List<HealthMetric> metrics) {
+                        List<org.ssafy.eeum.domain.health.entity.HealthMetric> metrics) {
                 if (metrics.isEmpty()) {
                         return Map.of(
                                         "summary", "오늘 수집된 건강 데이터가 없습니다.",
@@ -52,10 +35,10 @@ public class GmsService {
                                                         "WARNING")));
                 }
 
-                // Prepare context for AI
+                
                 StringBuilder context = new StringBuilder(
                                 "당신은 전문 패밀리 헬스 어드바이저입니다. 아래의 건강 데이터를 분석하여 노인(피부양자)을 위한 따뜻하고 전문적인 리포트를 작성해주세요.\n\n");
-                for (HealthMetric m : metrics) {
+                for (org.ssafy.eeum.domain.health.entity.HealthMetric m : metrics) {
                         context.append(
                                         String.format("- 시간: %s, 걸음수: %s, 평균심박수: %s, 혈압: %s/%s, 혈중산소: %s, 활동칼로리: %s kcal, 활동시간: %s분\n",
                                                         m.getRecordDate(), m.getSteps(), m.getAverageHeartRate(),
@@ -102,7 +85,7 @@ public class GmsService {
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .bodyValue(requestBody)
                                         .retrieve()
-                                        .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                                        .bodyToMono(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
                                         })
                                         .block();
 
@@ -115,15 +98,15 @@ public class GmsService {
                                                         .get("message");
                                         String content = (String) message.get("content");
 
-                                        // Basic JSON extraction if content has markers
+                                        
                                         if (content.contains("```json")) {
                                                 content = content.substring(content.indexOf("```json") + 7);
                                                 content = content.substring(0, content.indexOf("```"));
                                         }
 
-                                        ObjectMapper mapper = new ObjectMapper();
+                                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                                         return mapper.readValue(content,
-                                                        new TypeReference<Map<String, Object>>() {
+                                                        new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {
                                                         });
                                 }
                         }
@@ -138,13 +121,6 @@ public class GmsService {
                                                 "type", "WARNING")));
         }
 
-        /**
-         * 사용자의 발화 텍스트를 분석하여 위급 상황(EMERGENCY) 여부를 판단합니다.
-         * 
-         * @summary 음성 감성 분석
-         * @param text 분석할 텍스트 내용
-         * @return 위급 상황 여부 (true: EMERGENCY, false: SAFE)
-         */
         public boolean analyzeSentiment(String text) {
                 try {
                         WebClient webClient = WebClient.builder()
@@ -185,7 +161,7 @@ public class GmsService {
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .bodyValue(requestBody)
                                         .retrieve()
-                                        .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                                        .bodyToMono(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
                                         })
                                         .block();
 
@@ -201,7 +177,7 @@ public class GmsService {
                                         if (content == null)
                                                 return false;
 
-                                        ObjectMapper mapper = new ObjectMapper();
+                                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                                         JsonNode rootNode = mapper.readTree(content);
                                         String status = rootNode.path("status").asText().toUpperCase();
 

@@ -9,7 +9,7 @@ from ..config import FRAME_W, FRAME_H, DEFAULT_CONF, USE_HALF
 from ..core import build_observation
 from .smoothing import ema_smooth_keypoints_inplace
 
-# COCO 17개 키포인트 연결(엣지) 정의
+
 COCO17_EDGES = [
     (0, 1), (0, 2),       # 코 -> 눈
     (1, 3), (2, 4),       # 눈 -> 귀
@@ -92,6 +92,7 @@ def select_best_person(results, last_bbox=None, iou_thresh=0.3):
     
     if last_bbox is not None:
         best_iou = -1.0
+        
         boxes = results.boxes.xyxy.cpu().numpy()
         
         for i, box in enumerate(boxes):
@@ -100,7 +101,7 @@ def select_best_person(results, last_bbox=None, iou_thresh=0.3):
                 best_iou = iou
                 best_idx = i
         
-        # 겹침 정도가 너무 작으면 신뢰도 기반으로 교체
+        
         if best_iou < iou_thresh:
             best_idx = int(torch.argmax(results.boxes.conf).item())
     else:
@@ -131,12 +132,12 @@ class LivePipeline:
         self.source_id = source_id
         self.frame_index = 0
         
-        # 실제 카메라 입력 해상도 정보를 저장 (첫 프레임 감지)
+        
         self.actual_w = FRAME_W
         self.actual_h = FRAME_H
         self._first_frame = True
         
-        # 객체 추적을 위한 이전 프레임 바운딩 박스 보관
+        
         self.last_bbox = None
 
     def step(self, overlay: str = "smooth") -> Tuple[Optional[Dict[str, Any]], Optional[bytes], Optional[Any]]:
@@ -153,12 +154,18 @@ class LivePipeline:
         if not ok:
             return None, None, None
         
-        # 실제 입력 해상도 동적 감지
-        frame_h, frame_w = frame.shape[:2]
-        if self._first_frame or frame_w != self.actual_w or frame_h != self.actual_h:
+        
+        if self._first_frame:
+            frame_h, frame_w = frame.shape[:2]
             self.actual_h = frame_h
             self.actual_w = frame_w
             self._first_frame = False
+        
+        
+        frame_h, frame_w = frame.shape[:2]
+        if frame_w != self.actual_w or frame_h != self.actual_h:
+            self.actual_h = frame_h
+            self.actual_w = frame_w
 
         # YOLO 모델을 이용한 객체 탐지 및 포즈 추정
         results = self.model.predict(
@@ -169,23 +176,23 @@ class LivePipeline:
             verbose=False,
         )
         
-        # 단일 대상 추적 (IoU 기반 대상 고정)
+        
         r0 = select_best_person(results[0], last_bbox=self.last_bbox)
         
-        # 다음 프레임 추적을 위한 위치 업데이트
+        
         if r0.boxes is not None and len(r0.boxes) > 0:
             self.last_bbox = r0.boxes.xyxy[0].cpu().numpy()
         else:
             self.last_bbox = None
 
         ts = time.time()
-        # 공통 데이터 구조인 Observation 생성 및 EMA 필터링 적용
+        
         obs = build_observation(r0, self.actual_w, self.actual_h, ts, self.frame_index, source_id=self.source_id)
         obs = ema_smooth_keypoints_inplace(obs)
 
         self.frame_index += 1
 
-        # 시각화 처리 (스켈레톤 및 박스 그리기)
+        
         t0 = (obs.get("tracks") or [{}])[0]
         bbox_norm = t0.get("bbox")
         kps_raw = t0.get("keypoints_raw") or []
@@ -198,10 +205,11 @@ class LivePipeline:
         if ov == "raw":
             draw_skeleton_norm(annotated, kps_raw, conf_thr=0.3, color=(0, 0, 255))
         elif ov == "both":
+            
             draw_skeleton_norm(annotated, kps_raw, conf_thr=0.3, color=(0, 0, 255))
             draw_skeleton_norm(annotated, kps_smooth, conf_thr=0.3, color=(0, 255, 0))
         else:
-            # 기본값: 스무딩된 스켈레톤 출력 (초록색)
+            
             draw_skeleton_norm(annotated, kps_smooth, conf_thr=0.3, color=(0, 255, 0))
 
         jpg = encode_jpeg(annotated, self.jpeg_quality)

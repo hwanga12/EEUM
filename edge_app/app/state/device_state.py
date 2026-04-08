@@ -78,7 +78,7 @@ class DeviceState:
             self._state["serial_number"] = serial_number
             self._state["registered_at"] = time.time()
             
-            # 토큰 만료 시점 설정 (별도 지정 없으면 1년 뒤로 설정 - 장기 운용 고려)
+            
             if token_expiry:
                 self._state["token_expiry"] = token_expiry
             else:
@@ -182,21 +182,23 @@ class DeviceState:
                 new_refresh_token = new_data.get("refresh_token")
                 
                 if new_access_token and new_refresh_token:
-                    # 1. 로컬 저장소 업데이트
+                    
                     self.refresh_tokens(new_access_token, new_refresh_token)
                     
-                    # 2. 하위 장치(라즈베리파이 등)로 갱신된 토큰 동기화 전송
+                    
                     result = server_client.send_access_token_to_rpi(new_access_token)
-                    if result:
-                        logger.info("Access token synchronized to RPI")
+                    if result and result.get("ok") == True:
+                        logger.info("Access token sent to RPI successfully")
+                    else:
+                        logger.error("Failed to send access token to RPI")
                     
                     return new_access_token
             
-            return None
+            return None 
         
         return self.get_access_token()
 
-# 전역에서 접근 가능한 가상 싱글톤 인스턴스 관리
+
 _device_state: Optional[DeviceState] = None
 
 def get_device_state() -> DeviceState:

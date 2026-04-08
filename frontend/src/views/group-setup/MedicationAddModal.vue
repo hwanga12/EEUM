@@ -105,9 +105,9 @@
                   <span class="text-gray-400">~</span>
                   <div class="flex-1 relative">
                     <label class="text-xs text-gray-400 mb-1 block">종료일</label>
-                    <EeumDatePicker
-                      v-model="form.endDate"
-                      placeholder="종료일 선택"
+                    <EeumDatePicker 
+                      v-model="form.endDate" 
+                      placeholder="종료일 선택" 
                       :disabled="form.isLifetime"
                       :class="{ 'opacity-50 pointer-events-none': form.isLifetime }"
                     />
@@ -158,9 +158,9 @@
                     class="flex items-center gap-2 group"
                   >
                     <div class="relative flex-1">
-                      <input
-                        v-model="form.notificationTimes[index]"
-                        type="time"
+                      <input 
+                        v-model="form.notificationTimes[index]" 
+                        type="time" 
                         class="eeum-input"
                       />
                     </div>
@@ -234,14 +234,14 @@ const cycleTypes = [
 ];
 
 const days = ['월', '화', '수', '목', '금', '토', '일'];
-/** 비트마스크 정의: 월=1, 화=2, 수=4, 목=8, 금=16, 토=32, 일=64 */
-const dayBitmasks = [1, 2, 4, 8, 16, 32, 64];
+
+const dayBitmasks = [1, 2, 4, 8, 16, 32, 64]; 
 
 const form = reactive({
   medicineName: '',
   cycleType: 'DAILY',
   cycleValue: '',
-  daysOfWeek: 0, // Bitmask
+  daysOfWeek: 0, 
   startDate: new Date().toISOString().split('T')[0],
   endDate: '',
   isLifetime: false,
@@ -268,37 +268,29 @@ const resetForm = () => {
   form.notificationTimes = ['09:00'];
 };
 
-/** 수정 모드: 데이터 변경을 감시하여 폼에 반영합니다. */
-watch(
-  () => props.initialData,
-  (newData) => {
-    if (newData) {
-      form.medicineName = newData.medicineName;
-      form.cycleType = newData.cycleType;
-      form.cycleValue = newData.cycleValue;
-      form.daysOfWeek = newData.daysOfWeek;
-      form.startDate = newData.startDate;
-      form.endDate = newData.endDate || '';
-      form.isLifetime = !newData.endDate;
-      form.notificationTimes = newData.notificationTimes
-        ? [...newData.notificationTimes]
-        : ['09:00'];
-    } else {
-      resetForm();
-    }
-  },
-  { immediate: true },
-);
 
-/** 신규 추가 시 폼을 초기화합니다. */
-watch(
-  () => props.show,
-  (isShow) => {
-    if (isShow && !props.initialData) {
-      resetForm();
-    }
-  },
-);
+watch(() => props.initialData, (newData) => {
+  if (newData) {
+    form.medicineName = newData.medicineName;
+    form.cycleType = newData.cycleType;
+    form.cycleValue = newData.cycleValue;
+    form.daysOfWeek = newData.daysOfWeek;
+    form.startDate = newData.startDate;
+    form.endDate = newData.endDate || '';
+    form.isLifetime = !newData.endDate; 
+    
+    form.notificationTimes = newData.notificationTimes ? [...newData.notificationTimes] : ['09:00'];
+  } else {
+    resetForm();
+  }
+}, { immediate: true });
+
+
+watch(() => props.show, (isShow) => {
+  if (isShow && !props.initialData) {
+    resetForm();
+  }
+});
 
 const isDaySelected = (index) => {
   return (form.daysOfWeek & dayBitmasks[index]) !== 0;
@@ -338,8 +330,8 @@ const submit = async () => {
     await modalStore.openAlert('요일을 하나 이상 선택해주세요.');
     return;
   }
-
-  /** 데이터 복제 후 부모에게 전달 */
+  
+  
   const payload = JSON.parse(JSON.stringify(form));
   emit('add-medication', payload);
   resetForm();
@@ -361,7 +353,7 @@ const submit = async () => {
   background: #a1a1aa;
 }
 
-/* ConfirmModal과 동일한 트랜지션 애니메이션 적용 */
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;

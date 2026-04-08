@@ -1,8 +1,5 @@
 <template>
-  <div
-    class="min-h-[100dvh] flex items-center justify-center"
-    style="background: linear-gradient(135deg, #ffffff 0%, var(--color-primary-soft) 100%)"
-  >
+  <div class="min-h-[100dvh] flex items-center justify-center" style="background: linear-gradient(135deg, #ffffff 0%, var(--color-primary-soft) 100%);">
     <div class="w-full max-w-md px-6 py-10">
       <div class="text-center mb-8">
         <div class="flex items-center justify-center mb-1">
@@ -115,12 +112,7 @@
             />
             <span class="ml-2 eeum-sub">로그인 유지</span>
           </label>
-          <button
-            type="button"
-            class="text-sm font-medium"
-            style="color: var(--color-primary)"
-            @click="handleForgotPassword"
-          >
+          <button type="button" class="text-sm font-medium" style="color: var(--color-primary);" @click="handleForgotPassword">
             계정/비밀번호 찾기
           </button>
         </div>
@@ -226,25 +218,49 @@ const handleLogin = async () => {
   errorMessage.value = '';
 
   try {
-    const response = await apiClient.post(
-      '/auth/login',
-      {
-        email: loginForm.username,
-        password: loginForm.password,
-      },
-      {
-        withCredentials: false,
-        skipLoading: true,
-      },
-    );
+    const response = await apiClient.post('/auth/login', {
+      email: loginForm.username,
+      password: loginForm.password
+    }, {
+      withCredentials: false,
+      skipLoading: true 
+    })
 
-    const { accessToken, refreshToken } = response.data;
-    saveSession(accessToken, refreshToken);
-    syncWithAndroidBridge(accessToken);
+    const { accessToken, refreshToken } = response.data
+    
+    
+    if (loginForm.rememberMe) {
+      localStorage.setItem('accessToken', accessToken)
+      localStorage.setItem('refreshToken', refreshToken)
+      sessionStorage.removeItem('accessToken')
+      sessionStorage.removeItem('refreshToken')
+    } else {
+      sessionStorage.setItem('accessToken', accessToken)
+      sessionStorage.setItem('refreshToken', refreshToken)
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('refreshToken')
+    }
+    
+    
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
 
-    router.push('/home');
+    
+    if (window.AndroidBridge && window.AndroidBridge.saveAccessToken) {
+        window.AndroidBridge.saveAccessToken(accessToken);
+    }
+    
+    
+    router.push('/home')
   } catch (e) {
-    handleLoginError(e);
+    Logger.error(e)
+    const msg = e.response?.data?.message
+    if (msg) {
+      errorMessage.value = msg
+    } else if (e.response?.status === 401) {
+      errorMessage.value = '이메일 또는 비밀번호가 일치하지 않습니다.'
+    } else {
+      errorMessage.value = '로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+    }
   } finally {
     isLoading.value = false;
   }
@@ -310,8 +326,8 @@ const handleLoginError = (error) => {
  * 계정/비밀번호 찾기 페이지로 이동합니다.
  */
 const handleForgotPassword = () => {
-  router.push('/find-account');
-};
+  router.push('/find-account')
+}
 
 /**
  * 회원가입 페이지로 이동합니다.
@@ -322,6 +338,7 @@ const handleSignup = () => {
 </script>
 
 <style scoped>
+
 .login-container {
   background: linear-gradient(135deg, #ffffff 0%, var(--color-primary-light) 100%);
 }

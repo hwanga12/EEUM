@@ -82,20 +82,20 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import api from '@/services/api';
-import { useGroupSetupStore } from '@/stores/groupSetup';
-import { storeToRefs } from 'pinia';
-import { Logger } from '@/services/logger';
-import CareTargetSelect from '../../components/CareTargetSelect.vue';
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import api from '@/services/api' 
+import { useGroupSetupStore } from '@/stores/groupSetup'
+import { storeToRefs } from 'pinia'
+import { Logger } from '@/services/logger'
+import CareTargetSelect from '../../components/CareTargetSelect.vue'
 
 const router = useRouter();
 const route = useRoute();
 const setupStore = useGroupSetupStore();
 
-/** 스토어 상태 바인딩 */
-const { seniorId, bloodType, diseases } = storeToRefs(setupStore);
+
+const { seniorId, bloodType, diseases } = storeToRefs(setupStore)
 
 const familyId = computed(() => route.params.familyId);
 const members = ref([]);
@@ -120,17 +120,19 @@ const removeDisease = (index) => {
 };
 
 onMounted(async () => {
-  if (!familyId.value) return;
+  if (!familyId.value) return
+  
+  
+  setupStore.initData(familyId.value)
 
-  setupStore.initData(familyId.value);
-
-  /** 드롭다운용 멤버 목록 조회 (선택 가능한 옵션) */
-  /** 이는 UI 상태/옵션이며, 설정 데이터와는 별개임 (스토어에서 캐싱 가능하지만 현재 상태도 무방) */
+  
+  
+  
   try {
     const membersRes = await api.get(`/families/${familyId.value}/members`);
     members.value = membersRes.data;
   } catch (error) {
-    Logger.error('멤버 목록 조회 실패:', error);
+    Logger.error('멤버 목록 조회 실패:', error)
   }
 });
 
@@ -141,15 +143,12 @@ const goNext = () => {
   router.push({
     name: 'GroupEditStep3',
     params: { familyId: familyId.value },
-  });
-};
+  })
+}
 
-/**
- * 엔터키 입력 시 필수 정보가 입력되었다면 다음 단계로 이동합니다.
- */
 const handleEnter = () => {
   if (seniorId.value && bloodType.value) {
-    goNext();
+    goNext()
   }
-};
+}
 </script>

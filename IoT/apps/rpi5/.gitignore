@@ -7,6 +7,8 @@ __pycache__/
 .venv/
 venv/
 env/
+.env
+token.json
 
 # ----- Test / tooling -----
 .pytest_cache/

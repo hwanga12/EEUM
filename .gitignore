@@ -18,7 +18,9 @@ bin/
 *.iml
 *.ipr
 out/
+.env
 .env.*
+IoT/apps/rpi5/token.json
 mobile/local.properties
 mobile/app/google-services.json
 IoT/apps/rpi5-fastapi/.env

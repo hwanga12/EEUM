@@ -74,6 +74,16 @@ def upload_s3(local, bucket, key):
     s3_client.upload_file(local, bucket, key)
     return f"https://{bucket}.s3.ap-northeast-2.amazonaws.com/{key}"
 
+def convert_to_16k_mono(source, target):
+    audio = AudioSegment.from_file(source)
+    audio.set_frame_rate(16000).set_channels(1).export(target, format="wav")
+
+def run_tts_inference(text, prompt, sample_path, output_path):
+    outputs = cosyvoice.inference_zero_shot(text, prompt, sample_path, stream=False)
+    for out in outputs:
+        torchaudio.save(output_path, out['tts_speech'], cosyvoice.sample_rate)
+        break
+
 @app.post("/api/v1/voice/tts")
 async def generate_tts(request: TtsRequest, x_api_key: str = Depends(verify_api_key)):
     logger.info(f"🎙️ TTS Request: User {request.user_id}")
@@ -86,21 +96,16 @@ async def generate_tts(request: TtsRequest, x_api_key: str = Depends(verify_api_
     t_down = f"d_{uuid.uuid4()}"
     
     try:
-        download_s3(request.bucket_name, request.sample_s3_url, t_down)
-        
-        
-        audio = AudioSegment.from_file(t_down)
-        audio.set_frame_rate(16000).set_channels(1).export(t_wav, format="wav")
-        
+        if not os.path.exists(cached_wav):
+            await asyncio.to_thread(download_s3, request.bucket_name, request.sample_s3_url, t_down)
+            await asyncio.to_thread(convert_to_16k_mono, t_down, cached_wav)
+            logger.info(f"Voice sample cached: {cached_wav}")
+        else:
+            logger.info(f"Voice sample cache hit: {cached_wav}")
         
         prompt = f"You are a helpful assistant.<|endofprompt|>{request.sample_transcript}"
         
-        
-        outputs = cosyvoice.inference_zero_shot(request.text, prompt, t_wav, stream=False)
-        
-        for out in outputs:
-            torchaudio.save(t_res, out['tts_speech'], cosyvoice.sample_rate)
-            break
+        await asyncio.to_thread(run_tts_inference, request.text, prompt, cached_wav, t_res)
             
         url = await asyncio.to_thread(upload_s3, t_res, request.bucket_name, f"generated/{request.user_id}/{uuid.uuid4()}.wav")
         logger.info(f"TTS Success: {url}")

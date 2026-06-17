@@ -383,13 +383,11 @@ const refreshStartY = ref(0)
 const refreshPullDistance = ref(0)
 const canRefresh = ref(true)
 
-const S3_BASE_URL = 'https:
-
-
+const S3_BASE_URL = 'https://eeum-s3-bucket.s3.ap-northeast-2.amazonaws.com/'
 
 const getFullImageUrl = (path, name) => {
   if (!path) {
-    return `https:
+    return `https://ui-avatars.com/api/?name=${name || 'User'}&background=FF9B6A&color=fff&size=48`
   }
   
   return path.startsWith('http') ? path : `${S3_BASE_URL}${path}`
@@ -611,14 +609,22 @@ const fetchMessages = async () => {
   loading.value = true
   
   try {
-    const response = await messageService.getGroupMessages(familyId.value)
-    const list = response?.data ?? []
+    const response = await messageService.getGroupMessages(familyId.value, {
+      page: currentPage.value,
+      size: 20,
+    })
+    const list = Array.isArray(response?.data) ? response.data : []
 
-    messages.value = Array.isArray(list) ? list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(msg => ({
+    messages.value = list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map(msg => ({
       ...msg,
       expanded: false
-    })) : []
-    totalPages.value = 1
+    }))
+
+    if (list.length < 20) {
+      totalPages.value = currentPage.value + 1
+    } else {
+      totalPages.value = currentPage.value + 2
+    }
   } catch (error) {
     Logger.error('메시지 조회 실패:', error)
   } finally {

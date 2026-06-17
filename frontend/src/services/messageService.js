@@ -34,15 +34,14 @@ export const messageService = {
         return response.data
     },
 
-    
     async sendGroupMessage(groupId, content) {
         const response = await api.post(`/groups/${groupId}/messages`, { content })
         return response.data
     },
 
     
-    async getGroupMessages(groupId) {
-        const response = await api.get(`/groups/${groupId}/messages`)
+    async getGroupMessages(groupId, params = {}) {
+        const response = await api.get(`/groups/${groupId}/messages`, { params })
         return response.data
     },
 

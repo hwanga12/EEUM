@@ -1,29 +1,29 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
 
-// AI 리포트 분석 요청 시나리오 (무거운 작업)
-// 분석 요청이 동시에 몰릴 때 서버의 처리 능력 확인
-export let options = {
-  vus: 10, // 동시에 10명의 사용자가 분석 요청
+export const options = {
+  vus: 10,
   duration: "1m",
 };
 
-const BASE_URL = __ENV.BASE_URL || "https://i14a105.p.ssafy.io/api";
+const BASE_URL = __ENV.BASE_URL || "http://localhost:8080/api";
+const AUTH_TOKEN = __ENV.AUTH_TOKEN;
+
+if (!AUTH_TOKEN) {
+  throw new Error("AUTH_TOKEN environment variable is required");
+}
 
 export default function () {
   const groupId = 1;
   const today = new Date().toISOString().split("T")[0];
-
   const params = {
     headers: {
       "Content-Type": "application/json",
-      Authorization:
-        "Bearer REDACTED_JWT",
+      Authorization: `Bearer ${AUTH_TOKEN}`,
     },
   };
 
-  // analyze API는 POST 방식이며 groupId와 date를 쿼리 파라미터로 받음
-  let res = http.post(
+  const res = http.post(
     `${BASE_URL}/health/analyze?groupId=${groupId}&date=${today}`,
     null,
     params,
@@ -31,8 +31,14 @@ export default function () {
 
   check(res, {
     "analysis status is 200": (r) => r.status === 200,
-    "has report data": (r) => r.status === 200 && r.json().data !== null,
+    "has report data": (r) => {
+      try {
+        return r.status === 200 && r.json().data !== null;
+      } catch (error) {
+        return false;
+      }
+    },
   });
 
-  sleep(5); // 분석은 무거운 작업이므로 긴 간격을 둠
+  sleep(5);
 }

@@ -1,8 +1,7 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
 
-// 메시지 전송 부하 테스트 (Voice Styling 프로세스 트리거 전단계)
-export let options = {
+export const options = {
   stages: [
     { duration: "30s", target: 50 },
     { duration: "1m", target: 50 },
@@ -10,9 +9,19 @@ export let options = {
   ],
 };
 
-const BASE_URL = __ENV.BASE_URL || "https://i14a105.p.ssafy.io/api";
-const TOKEN =
-  "Bearer REDACTED_JWT";
+const BASE_URL = __ENV.BASE_URL || "http://localhost:8080/api";
+const AUTH_TOKEN = __ENV.AUTH_TOKEN;
+
+if (!AUTH_TOKEN) {
+  throw new Error("AUTH_TOKEN environment variable is required");
+}
+
+const params = {
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${AUTH_TOKEN}`,
+  },
+};
 
 export default function () {
   const payload = JSON.stringify({
@@ -20,23 +29,14 @@ export default function () {
     voiceStyle: "KIND",
   });
 
-  const params = {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: TOKEN,
-    },
-  };
-
-  let res = http.post(`${BASE_URL}/groups/1/messages`, payload, params);
+  const res = http.post(`${BASE_URL}/groups/1/messages`, payload, params);
 
   check(res, {
     "send message status is 200": (r) => r.status === 200,
     "has message id": (r) => {
       try {
-        return (
-          r.status === 200 && r.json().data && r.json().data.id !== undefined
-        );
-      } catch (e) {
+        return r.status === 200 && r.json().data?.id !== undefined;
+      } catch (error) {
         return false;
       }
     },

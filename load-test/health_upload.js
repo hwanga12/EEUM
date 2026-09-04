@@ -1,28 +1,30 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
 
-// 헬스 데이터 대량 업로드 시나리오
-// 100명의 피부양자 기기가 동시에 데이터를 전송하는 상황 가정
-export let options = {
+export const options = {
   stages: [
-    { duration: "30s", target: 50 }, // 30초 동안 50명까지 증가
-    { duration: "1m", target: 100 }, // 1분 동안 100명 유지
-    { duration: "30s", target: 0 }, // 30초 동안 종료
+    { duration: "30s", target: 50 },
+    { duration: "1m", target: 100 },
+    { duration: "30s", target: 0 },
   ],
   thresholds: {
-    http_req_duration: ["p(95)<500"], // 95%의 요청이 500ms 이내여야 함
+    http_req_duration: ["p(95)<500"],
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || "https://i14a105.p.ssafy.io/api";
+const BASE_URL = __ENV.BASE_URL || "http://localhost:8080/api";
+const AUTH_TOKEN = __ENV.AUTH_TOKEN;
+
+if (!AUTH_TOKEN) {
+  throw new Error("AUTH_TOKEN environment variable is required");
+}
 
 export default function () {
-  const groupId = Math.floor(Math.random() * 100) + 1; // 1~100 사이의 groupId 시뮬레이션
-
+  const groupId = Math.floor(Math.random() * 100) + 1;
   const payload = JSON.stringify([
     {
       type: "HEART_RATE",
-      value: Math.floor(Math.random() * (100 - 60 + 1)) + 60, // 60~100 사이 심박수
+      value: Math.floor(Math.random() * 41) + 60,
       timestamp: new Date().toISOString(),
     },
     {
@@ -35,12 +37,11 @@ export default function () {
   const params = {
     headers: {
       "Content-Type": "application/json",
-      Authorization:
-        "Bearer REDACTED_JWT",
+      Authorization: `Bearer ${AUTH_TOKEN}`,
     },
   };
 
-  let res = http.post(
+  const res = http.post(
     `${BASE_URL}/health/data?groupId=${groupId}`,
     payload,
     params,
@@ -50,5 +51,5 @@ export default function () {
     "upload status is 200": (r) => r.status === 200,
   });
 
-  sleep(Math.random() * 2 + 1); // 1~3초 간격으로 전송 시뮬레이션
+  sleep(Math.random() * 2 + 1);
 }
